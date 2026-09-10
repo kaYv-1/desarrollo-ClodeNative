@@ -19,6 +19,7 @@
         <p><strong>Perfil desde backend:</strong></p>
         <p>Usuario: {{ backendUser.user || backendUser.preferred_username || 'No disponible' }}</p>
         <p>Nombre: {{ backendUser.name || 'No disponible' }}</p>
+        <p>Roles: {{ backendUser.roles?.length ? backendUser.roles.join(', ') : 'Sin roles asignados' }}</p>
       </div>
 
       <button type="button" class="btn btn-danger" (click)="logout()">
@@ -27,3 +28,5 @@
     </div>
   </section>
 </main>
+
+<router-outlet></router-outlet>

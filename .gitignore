@@ -1,0 +1,26 @@
+# IDE and operating system files
+.idea/
+.vscode/*.log
+*.iml
+*.log
+Thumbs.db
+desktop.ini
+
+# Java and Spring Boot
+**/target/
+**/.mvn/
+**/hs_err_pid*
+
+# Angular and Node
+**/node_modules/
+**/.angular/
+**/dist/
+**/coverage/
+**/.cache/
+
+# Local environment and secrets
+**/.env
+**/.env.*
+!**/.env.example
+**/application-local.properties
+**/application-prod.properties

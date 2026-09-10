@@ -1,8 +1,9 @@
 import { Component, HostListener, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
+import { RouterOutlet } from '@angular/router';
 import { MsalService, MsalBroadcastService } from '@azure/msal-angular';
-import { InteractionStatus, AuthenticationResult } from '@azure/msal-browser';
+import { InteractionStatus } from '@azure/msal-browser';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { environment } from '../environments/environment';
@@ -10,7 +11,7 @@ import { environment } from '../environments/environment';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterOutlet],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })
@@ -26,6 +27,7 @@ export class App implements OnInit, OnDestroy {
   private msalBroadcastService = inject(MsalBroadcastService);
   private readonly http = inject(HttpClient);
   private readonly _destroying$ = new Subject<void>();
+  private msalInitialized = false;
 
   @HostListener('window:auth-http-error', ['$event'])
   onAuthHttpError(event: Event): void {
@@ -36,22 +38,41 @@ export class App implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    if (environment.demoMode) {
+      this.msalInitialized = true;
+      this.isLoggedIn = true;
+      this.userName = 'Angel Demo';
+      this.backendUser = {
+        authenticated: true,
+        user: 'demo@pedidos360.local',
+        name: 'Angel Demo',
+        roles: ['ADMIN'],
+      };
+      return;
+    }
+
     this.msalBroadcastService.inProgress$
       .pipe(
         takeUntil(this._destroying$)
       )
       .subscribe((status: InteractionStatus) => {
         this.isAuthenticating = status !== InteractionStatus.None && status !== InteractionStatus.Startup;
-        if (status === InteractionStatus.None) {
-          this.checkAccount();
-          this.loadUserProfile(false);
-        }
       });
 
     this.msalService.initialize().subscribe({
-      next: () => {
-        this.checkAccount();
-        this.loadUserProfile(false);
+      next: async () => {
+        try {
+          const result = await this.msalService.instance.handleRedirectPromise();
+          if (result?.account) {
+            this.msalService.instance.setActiveAccount(result.account);
+          }
+          this.msalInitialized = true;
+          this.checkAccount();
+          this.loadUserProfile(false);
+        } catch (err) {
+          this.authError = this.getAuthErrorMessage(err);
+          console.error('Error al procesar el retorno de Microsoft:', err);
+        }
       },
       error: (err) => {
         this.authError = 'No se pudo inicializar el inicio de sesión con Microsoft. Revisa la configuración de Azure.';
@@ -62,22 +83,26 @@ export class App implements OnInit, OnDestroy {
 
   checkAccount(): void {
     const activeAccount = this.msalService.instance.getActiveAccount();
-    const accounts = this.msalService.instance.getAllAccounts();
+    const cachedAccounts = this.msalService.instance.getAllAccounts();
 
     if (activeAccount) {
       this.isLoggedIn = true;
       this.userName = activeAccount.name || activeAccount.username || '';
-    } else if (accounts.length > 0) {
-      this.msalService.instance.setActiveAccount(accounts[0]);
+    } else if (cachedAccounts.length > 0) {
+      this.msalService.instance.setActiveAccount(cachedAccounts[0]);
       this.isLoggedIn = true;
-      this.userName = accounts[0].name || accounts[0].username || '';
-    } else {
+      this.userName = cachedAccounts[0].name || cachedAccounts[0].username || '';
+    } else if (this.msalInitialized) {
       this.isLoggedIn = false;
       this.userName = '';
     }
   }
 
   login(): void {
+    if (environment.demoMode) {
+      return;
+    }
+
     if (this.isAuthenticating) {
       return;
     }
@@ -85,18 +110,17 @@ export class App implements OnInit, OnDestroy {
     this.authError = '';
     this.isAuthenticating = true;
 
-    this.msalService.loginPopup({
+    this.msalService.loginRedirect({
       scopes: environment.azure.loginScopes,
     }).subscribe({
-      next: (result: AuthenticationResult) => {
-        if (result.account) {
-          this.msalService.instance.setActiveAccount(result.account);
-        }
-        this.checkAccount();
-        this.loadUserProfile(true);
-      },
+      next: () => undefined,
       error: (err) => {
         this.isAuthenticating = false;
+        this.checkAccount();
+        if (this.isLoggedIn) {
+          this.loadUserProfile(true);
+          return;
+        }
         this.authError = this.getAuthErrorMessage(err);
         console.error('Error en login popup:', err);
       },
@@ -170,6 +194,13 @@ export class App implements OnInit, OnDestroy {
   }
 
   logout(): void {
+    if (environment.demoMode) {
+      this.isLoggedIn = false;
+      this.userName = '';
+      this.backendUser = null;
+      return;
+    }
+
     this.isAuthenticating = false;
     this.backendUser = null;
     this.isLoggedIn = false;

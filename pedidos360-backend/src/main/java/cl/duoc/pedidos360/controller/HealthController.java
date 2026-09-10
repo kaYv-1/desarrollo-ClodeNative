@@ -1,6 +1,8 @@
 package cl.duoc.pedidos360.controller;
 
 import java.util.Map;
+import java.util.List;
+import java.util.Objects;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -16,11 +18,13 @@ public class HealthController {
 
     @GetMapping("/me")
     public ResponseEntity<Map<String, Object>> me(@AuthenticationPrincipal Jwt jwt) {
+        List<String> roles = jwt.getClaimAsStringList("roles");
         return ResponseEntity.ok(Map.of(
             "authenticated", true,
             "user", jwt.getSubject(),
-            "preferred_username", jwt.getClaimAsString("preferred_username"),
-            "name", jwt.getClaimAsString("name")
+            "preferred_username", Objects.toString(jwt.getClaimAsString("preferred_username"), ""),
+            "name", Objects.toString(jwt.getClaimAsString("name"), ""),
+            "roles", roles == null ? List.of() : roles
         ));
     }
 

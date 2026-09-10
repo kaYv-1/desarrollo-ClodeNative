@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -25,20 +27,38 @@ public class OrdenController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Orden> obtenerOrden(@PathVariable Long id) {
-        return ordenService.obtenerOrdenPorId(id)
+    public ResponseEntity<Orden> obtenerOrden(@PathVariable Long id, Authentication authentication) {
+        var orden = esAdmin(authentication)
+            ? ordenService.obtenerOrdenPorId(id)
+            : ordenService.obtenerOrdenPorIdYEmailCliente(id, email(authentication));
+        return orden
             .map(ResponseEntity::ok)
             .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @GetMapping
-    public ResponseEntity<List<Orden>> obtenerTodasLasOrdenes() {
-        return ResponseEntity.ok(ordenService.obtenerTodasLasOrdenes());
+    public ResponseEntity<List<Orden>> obtenerTodasLasOrdenes(Authentication authentication) {
+        var ordenes = esAdmin(authentication)
+            ? ordenService.obtenerTodasLasOrdenes()
+            : ordenService.obtenerOrdenesPorEmailCliente(email(authentication));
+        return ResponseEntity.ok(ordenes);
     }
 
     @GetMapping("/cliente/{clienteId}")
     public ResponseEntity<List<Orden>> obtenerOrdenesPorCliente(@PathVariable Long clienteId) {
         return ResponseEntity.ok(ordenService.obtenerOrdenesPorCliente(clienteId));
+    }
+
+    private boolean esAdmin(Authentication authentication) {
+        return authentication.getAuthorities().stream()
+            .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
+    }
+
+    private String email(Authentication authentication) {
+        if (authentication.getPrincipal() instanceof Jwt jwt) {
+            return jwt.getClaimAsString("preferred_username");
+        }
+        return authentication.getName();
     }
 
     @GetMapping("/estado/{estado}")

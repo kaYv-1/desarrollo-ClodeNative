@@ -3,6 +3,7 @@ import { CanActivate, ActivatedRouteSnapshot, RouterStateSnapshot, Router } from
 import { MsalService } from '@azure/msal-angular';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
@@ -19,6 +20,13 @@ export class RoleGuard implements CanActivate {
     state: RouterStateSnapshot
   ): Observable<boolean> {
     const requiredRoles = route.data['roles'] as string[];
+
+    if (environment.demoMode) {
+      return new Observable(observer => {
+        observer.next(requiredRoles?.includes('ADMIN') ?? true);
+        observer.complete();
+      });
+    }
 
     return this.checkUserRoles(requiredRoles);
   }

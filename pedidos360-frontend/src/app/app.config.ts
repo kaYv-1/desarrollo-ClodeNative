@@ -5,10 +5,12 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import {
   MSAL_INSTANCE,
   MSAL_INTERCEPTOR_CONFIG,
+  MSAL_GUARD_CONFIG,
   MsalService,
   MsalBroadcastService,
   MsalGuard,
   MsalInterceptor,
+  MsalGuardConfiguration,
   MsalInterceptorConfiguration
 } from '@azure/msal-angular';
 import {
@@ -28,7 +30,7 @@ export function MSALInstanceFactory(): IPublicClientApplication {
       postLogoutRedirectUri: environment.azure.postLogoutRedirectUri,
     },
     cache: {
-      cacheLocation: 'localStorage',
+      cacheLocation: 'sessionStorage',
     },
   });
 }
@@ -39,8 +41,17 @@ export function MSALInterceptorConfigFactory(): MsalInterceptorConfiguration {
   protectedResourceMap.set(`${environment.azure.apiEndpoint}/*`, [environment.azure.apiScope]);
 
   return {
-    interactionType: InteractionType.Popup,
+    interactionType: InteractionType.Redirect,
     protectedResourceMap
+  };
+}
+
+export function MSALGuardConfigFactory(): MsalGuardConfiguration {
+  return {
+    interactionType: InteractionType.Redirect,
+    authRequest: {
+      scopes: environment.azure.loginScopes,
+    },
   };
 }
 
@@ -56,6 +67,14 @@ export const appConfig: ApplicationConfig = {
     {
       provide: MSAL_INTERCEPTOR_CONFIG,
       useFactory: MSALInterceptorConfigFactory
+    },
+    {
+      provide: MSAL_GUARD_CONFIG,
+      useFactory: MSALGuardConfigFactory
+    },
+    {
+      provide: MsalInterceptor,
+      useClass: MsalInterceptor
     },
     MsalService,
     MsalBroadcastService,
