@@ -1,12 +1,15 @@
 <header class="app-header">
   <div class="brand">
     <h2>📦 Pedidos360</h2>
-    <span *ngIf="isDemoMode" class="badge-demo">MODO DEMO</span>
+    <span *ngIf="userRole" class="badge-role" [class.badge-admin]="isAdmin" [class.badge-cliente]="isCliente">
+      {{ isAdmin ? '⚙️ ADMIN' : '🛒 CLIENTE' }}
+    </span>
   </div>
 
-  <nav *ngIf="isLoggedIn" class="nav-menu">
-    <a routerLink="/portal" routerLinkActive="active" class="nav-btn">🛒 Portal Clientes</a>
-    <a routerLink="/admin" routerLinkActive="active" class="nav-btn" *ngIf="hasAdminRole()">⚙️ Panel Admin</a>
+  <!-- Nav: solo muestra los links que corresponden al rol -->
+  <nav *ngIf="isLoggedIn && userRole" class="nav-menu">
+    <a *ngIf="isCliente" routerLink="/portal" routerLinkActive="active" class="nav-btn">🛒 Mi Portal</a>
+    <a *ngIf="isAdmin"   routerLink="/admin"  routerLinkActive="active" class="nav-btn">⚙️ Panel Admin</a>
   </nav>
 
   <div class="user-session">
@@ -14,11 +17,10 @@
       <button type="button" class="btn btn-primary" [disabled]="isAuthenticating" (click)="login()">
         {{ isAuthenticating ? 'Conectando...' : 'Iniciar Sesión Azure AD' }}
       </button>
-      <a *ngIf="!isDemoMode" href="/?demo=true" class="btn btn-secondary">Modo Demo</a>
     </div>
 
     <div *ngIf="isLoggedIn" class="user-details">
-      <span class="user-badge">👤 {{ userName }} <strong class="roles-tag">[{{ userRolesDisplay }}]</strong></span>
+      <span class="user-badge">👤 {{ userName }} <strong class="roles-tag">[{{ userRole ?? 'Sin rol' }}]</strong></span>
       <button type="button" class="btn btn-danger btn-sm" (click)="logout()">Cerrar Sesión</button>
     </div>
   </div>
@@ -32,6 +34,13 @@
   ⚠️ {{ authError }}
 </div>
 
+<!-- Sin rol asignado en Azure AD -->
+<div *ngIf="isLoggedIn && noRoleError" class="alert alert-warning" role="alert">
+  ⚠️ Tu cuenta <strong>{{ userEmail }}</strong> no tiene un rol asignado en esta aplicación.
+  Contacta al administrador para que te asigne el rol <strong>ADMIN</strong> o <strong>CLIENTE</strong> en Azure AD.
+</div>
+
+<!-- Pantalla de bienvenida (solo cuando no está logueado) -->
 <div *ngIf="!isLoggedIn" class="login-hero">
   <div class="hero-card">
     <h3>Bienvenido a Pedidos360 Cloud Native</h3>
@@ -40,9 +49,6 @@
       <button type="button" class="btn btn-lg btn-primary" [disabled]="isAuthenticating" (click)="login()">
         🔑 Iniciar Sesión con Microsoft
       </button>
-      <a *ngIf="!isDemoMode" href="/?demo=true" class="btn btn-lg btn-secondary">
-        ⚡ Entrar en Modo Demo Local
-      </a>
     </div>
   </div>
 </div>

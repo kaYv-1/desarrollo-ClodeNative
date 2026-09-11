@@ -2,7 +2,6 @@ import { Injectable } from '@angular/core';
 import { CanActivate, ActivatedRouteSnapshot, RouterStateSnapshot, Router } from '@angular/router';
 import { MsalService } from '@azure/msal-angular';
 import { Observable, of } from 'rxjs';
-import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
@@ -19,11 +18,6 @@ export class RoleGuard implements CanActivate {
     state: RouterStateSnapshot
   ): Observable<boolean> {
     const requiredRoles = route.data['roles'] as string[];
-
-    if (environment.demoMode) {
-      return of(requiredRoles?.includes('ADMIN') ?? true);
-    }
-
     return this.checkUserRoles(requiredRoles, state);
   }
 
