@@ -22,8 +22,12 @@ public class OrdenController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'CLIENTE')")
-    public ResponseEntity<Orden> crearOrden(@RequestBody Orden orden) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(ordenService.crearOrden(orden));
+    public ResponseEntity<Orden> crearOrden(@RequestBody Orden orden, Authentication authentication) {
+        String userEmail = esAdmin(authentication) && orden.getCliente() != null && orden.getCliente().getId() != null
+            ? null
+            : email(authentication);
+        String userName = nombre(authentication);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ordenService.crearOrdenParaUsuario(orden, userEmail, userName));
     }
 
     @GetMapping("/{id}")
@@ -45,6 +49,7 @@ public class OrdenController {
     }
 
     @GetMapping("/cliente/{clienteId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<Orden>> obtenerOrdenesPorCliente(@PathVariable Long clienteId) {
         return ResponseEntity.ok(ordenService.obtenerOrdenesPorCliente(clienteId));
     }
@@ -61,6 +66,16 @@ public class OrdenController {
         return authentication.getName();
     }
 
+    private String nombre(Authentication authentication) {
+        if (authentication.getPrincipal() instanceof Jwt jwt) {
+            String name = jwt.getClaimAsString("name");
+            if (name != null && !name.isBlank()) {
+                return name;
+            }
+        }
+        return authentication.getName();
+    }
+
     @GetMapping("/estado/{estado}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<Orden>> obtenerOrdenesPorEstado(@PathVariable EstadoOrden estado) {
@@ -69,12 +84,12 @@ public class OrdenController {
 
     @PostMapping("/{id}/detalles")
     @PreAuthorize("hasAnyRole('ADMIN', 'CLIENTE')")
-    public ResponseEntity<Orden> agregarDetalle(@PathVariable Long id, @RequestBody DetallePedido detalle) {
-        try {
-            return ResponseEntity.ok(ordenService.agregarDetalleAOrden(id, detalle));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
+    public ResponseEntity<Orden> agregarDetalle(@PathVariable Long id, @RequestBody DetallePedido detalle, Authentication authentication) {
+        if (!esAdmin(authentication)) {
+            ordenService.obtenerOrdenPorIdYEmailCliente(id, email(authentication))
+                .orElseThrow(() -> new IllegalArgumentException("Orden no encontrada o no pertenece al usuario autenticado"));
         }
+        return ResponseEntity.ok(ordenService.agregarDetalleAOrden(id, detalle));
     }
 
     @PutMapping("/{id}/estado")

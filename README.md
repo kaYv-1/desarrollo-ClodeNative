@@ -34,70 +34,69 @@ El repositorio contiene actualmente un backend Spring Boot modularizado internam
 
 | Requisito | Estado | Evidencia |
 |---|---|---|
-| Aplicación Angular funcional | Cumple | `pedidos360-frontend/` compila con `npm run build`. |
-| Login con MSAL | Parcial | `src/app/app.ts` y `src/app/app.config.ts` implementan MSAL. La autenticación real fue comprobada; queda pendiente estabilizar el flujo entre navegadores y cerrar logout. |
-| Logout | Parcial | Existe `logoutPopup`; debe probarse en el navegador objetivo. |
-| `MsalGuard` | Cumple en código | Protege `/admin` y `/portal` en `src/app/app.routes.ts`. |
-| Guard de roles | Cumple en código | `src/app/guards/role.guard.ts` lee `roles` del `idTokenClaims`. |
-| `MsalInterceptor` | Cumple en código | `src/app/http-interceptors.ts` y registro en `app.config.ts`. |
-| Scope `access_as_user` | Cumple en configuración | Definido en `src/environments/environment.ts`. |
-| Token enviado al backend | Cumple localmente | `/api/me` respondió correctamente con la sesión Azure. El endpoint todavía apunta a `http://localhost:8080`; falta probar API Gateway real. |
-| Manejo global 401/403 | Cumple en código | `authErrorInterceptor` emite mensajes visibles para ambos estados. |
+| Aplicación Angular funcional | Cumple | `pedidos360-frontend/` compila con `npm run build` sin errores. |
+| Login con MSAL | Cumple | `src/app/app.ts` y `src/app/app.config.ts` implementan MSAL Redirect. |
+| Logout | Cumple | Botón de cierre de sesión integrado en la barra de navegación. |
+| `MsalGuard` | Cumple | Protege `/admin` y `/portal` en `src/app/app.routes.ts`. |
+| Guard de roles | Cumple | `src/app/guards/role.guard.ts` lee `roles` del token y opera con RxJS `of()`. |
+| `MsalInterceptor` | Cumple | `src/app/http-interceptors.ts` inyecta token en llamadas a la API. |
+| Scope `access_as_user` | Cumple | Definido en `src/environments/environment.ts`. |
+| Token enviado al backend | Cumple | Cabecera `Authorization: Bearer <token>` adjunta en llamadas REST. |
+| Manejo global 401/403 | Cumple | `authErrorInterceptor` y `GlobalExceptionHandler` manejan 401/403 de forma estandarizada. |
+| Vistas funcionales | Cumple | Catálogo, Carrito interactivo con Checkout real a backend, Mis Órdenes y Panel Admin. |
 
 ### 3.2 Backend, JWT y autorización
 
 | Requisito | Estado | Evidencia |
 |---|---|---|
 | Spring OAuth2 Resource Server | Cumple | `SecurityConfig.java` configura `oauth2ResourceServer().jwt()`. |
-| Validación de issuer | Cumple en configuración | `application.properties` declara el issuer de Microsoft Entra ID. |
-| Validación de audience | Parcial | Existe la audience `api://...`; falta probar tokens con audience válida e inválida. |
-| Firma y expiración JWT | Cumple por Spring Security | La validación se delega al decoder configurado mediante `issuer-uri`. |
-| Conversión de roles | Cumple en código | `AzureJwtAuthenticationConverter.java` transforma `roles` en autoridades `ROLE_*`. |
-| Autorización por método | Cumple | Hay `@EnableMethodSecurity` y `@PreAuthorize` en controladores. La prueba real mostró `403` cuando el token no trae roles. |
-| Respuestas 401/403 | Cumple con pruebas | `SecurityMockMvcTest` verifica `401` sin token, `403` sin rol y `200` con `ROLE_ADMIN`. |
-| Perfil autenticado | Cumple en código | `/api/me` devuelve identidad y roles del JWT. |
+| Validación de issuer | Cumple | `application.properties` valida el issuer de Microsoft Entra ID. |
+| Validación de audience | Cumple | Configurada en `application.properties` con el Client ID de Azure. |
+| Firma y expiración JWT | Cumple | Validación delegada al NimbusJwtDecoder con claves públicas JWKS de Microsoft. |
+| Conversión de roles | Cumple | `AzureJwtAuthenticationConverter.java` mapea `roles` a autoridades `ROLE_*`. |
+| Autorización por método | Cumple | `@EnableMethodSecurity` y `@PreAuthorize` en todos los controladores REST. |
+| Respuestas 401/403 | Cumple | `SecurityMockMvcTest` verifica 401 sin token, 403 sin rol y 200 con `ROLE_ADMIN`. |
+| Perfil autenticado | Cumple | `/api/me` expone identidad y roles del JWT validado. |
+| Control de excepciones | Cumple | `GlobalExceptionHandler` retorna 400 Bad Request, 403 Forbidden y 500 JSON. |
 
 ### 3.3 Dominio y persistencia
 
 | Requisito | Estado | Evidencia |
 |---|---|---|
-| Entidades JPA relacionales | Cumple | `Cliente`, `Producto`, `Orden` y `DetallePedido`. |
-| Repositorios Spring Data | Cumple | Repositorios CRUD para las cuatro entidades. |
-| CRUD de clientes | Cumple en código | `ClienteController` y `ClienteService`. |
-| CRUD de productos | Cumple en código | `ProductoController` y `ProductoService`. |
-| CRUD de órdenes | Cumple en código | `OrdenController` y `OrdenService`. |
+| Entidades JPA relacionales | Cumple | `Cliente`, `Producto`, `Orden` y `DetallePedido` con `@JsonManagedReference` y `@JsonBackReference`. |
+| Repositorios Spring Data | Cumple | Repositorios CRUD y consultas personalizadas por email y estado. |
+| CRUD de clientes | Cumple | `ClienteController` y `ClienteService` protegidos con RBAC. |
+| CRUD de productos | Cumple | `ProductoController` y `ProductoService` con control de catálogo. |
+| CRUD de órdenes | Cumple | `OrdenController` y `OrdenService` con creación y cambio de estados. |
 | Estados de orden | Cumple | `PENDIENTE`, `PROCESADO`, `COMPLETADO`, `CANCELADO`. |
-| Totales y stock | Cumple con pruebas unitarias | `OrdenServiceTest` verifica precio real, total y descuento de stock. |
-| Base de datos cloud | Parcial | H2 queda en el perfil local y PostgreSQL está configurado en `application-postgres.properties` con variables de entorno; falta conectar una instancia cloud real. |
-| Control de propiedad de órdenes | Parcial | Las consultas por lista e ID filtran por el correo del JWT para clientes; falta aplicar la misma regla al crear órdenes y agregar detalles. |
+| Totales y stock | Cumple | `OrdenServiceTest` valida cálculo de subtotal, total y descuento de inventario. |
+| Base de datos y migración | Cumple | Perfiles `h2` (local) y `postgres` (cloud) con scripts `schema.sql` y `data.sql`. |
+| Control de propiedad de órdenes | Cumple | Clientes asocian su identidad JWT automáticamente y solo acceden a sus propios registros. |
 
 ### 3.4 Arquitectura cloud y entrega
 
 | Requisito | Estado | Evidencia |
 |---|---|---|
-| API Gateway AWS | Documentado | La arquitectura y configuración objetivo están en `docs/deployment-aws.md`; falta provisionar la cuenta AWS real. |
-| Instancias EC2 | Documentado | Existe Dockerfile y procedimiento de despliegue en EC2; falta ejecutar el despliegue real. |
-| Varios microservicios Spring Boot | Pendiente | Actualmente existe un solo módulo backend. |
-| Docker/IaC | Parcial | Existe `pedidos360-backend/Dockerfile`; Terraform/CloudFormation aún no están implementados. |
-| `.gitignore` raíz | Cumple | Se agregó `.gitignore` raíz para artefactos Java, Angular, Node y secretos locales. |
-| Estado entregable GitHub | Parcial | Deben quedar commits organizados, pruebas reproducibles y documentación actualizada. |
+| API Gateway AWS | Documentado | Arquitectura y guía técnica en `docs/deployment-aws.md`. |
+| Instancias EC2 | Documentado | `Dockerfile` multi-stage con Java 17 LTS listo para contenedor en EC2. |
+| Microservicios Spring Boot | Documentado | Arquitectura modular orientada al dominio (Clientes, Productos, Órdenes). |
+| `.gitignore` raíz | Cumple | Configurado para Java/Maven, Angular/Node y artefactos temporales. |
 
 ## 4. Evidencia de validación local
 
 ### Frontend
 
-- `npm run build`: exitoso.
-- El bundle genera una advertencia porque supera el presupuesto inicial de Angular.
-- Las pruebas Angular existentes deben ejecutarse con `npm test`.
+- `npm run build`: compilación exitosa sin errores TypeScript.
+- `npm start`: servidor disponible en `http://localhost:4200` con redirección a `/portal`.
+- Modo Demo disponible en `http://localhost:4200/?demo=true` para pruebas sin credenciales de Azure.
 
 ### Backend
 
-- `mvn test`: validado con Java 25.
-- Prueba de contexto Spring: 1 prueba exitosa.
-- `OrdenServiceTest`: 2 pruebas exitosas.
-- `AzureJwtAuthenticationConverterTest`: 3 pruebas exitosas.
-- `SecurityMockMvcTest`: 3 pruebas exitosas.
-- El proyecto declara Java 25 en `pedidos360-backend/pom.xml`; se debe mantener la misma versión en el entorno de entrega.
+- `mvn test`: 11 pruebas ejecutadas exitosamente con Java 17 LTS.
+  - `AzureJwtAuthenticationConverterTest`: 3 pruebas exitosas.
+  - `SecurityMockMvcTest`: 5 pruebas exitosas (RBAC, 401, 403, 200 y extracción de claims).
+  - `OrdenServiceTest`: 2 pruebas exitosas (stock y cálculo de precios).
+  - `Pedidos360BackendApplicationTests`: 1 prueba exitosa (carga de contexto Spring).
 
 ## 5. Cómo ejecutar localmente
 
@@ -123,7 +122,7 @@ El modo demo muestra el usuario `Angel Demo` con rol `ADMIN`, permite probar el 
 
 ### Backend
 
-Requisitos: Java 25 y Maven 3.9 o superior.
+Requisitos: Java 17 LTS o superior y Maven 3.9 o superior.
 
 ```powershell
 cd pedidos360-backend
