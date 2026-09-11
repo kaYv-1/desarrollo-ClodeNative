@@ -1,13 +1,12 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClientModule } from '@angular/common/http';
 import { ApiService, Producto, Orden, DetallePedido } from '../../services/api.service';
 
 @Component({
   selector: 'app-cliente-portal',
   standalone: true,
-  imports: [CommonModule, FormsModule, HttpClientModule],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="cliente-portal">
       <h1>Portal de Cliente</h1>
@@ -265,15 +264,22 @@ export class ClientePortalComponent implements OnInit {
   }
 
   cargarMisOrdenes() {
-    // TODO: Obtener clienteId del usuario autenticado
-    // this.apiService.obtenerOrdenesPorCliente(clienteId).subscribe({...})
+    this.apiService.obtenerTodasLasOrdenes().subscribe({
+      next: (data) => this.misOrdenes = data,
+      error: () => this.mostrarError('Error al consultar las órdenes')
+    });
   }
 
   agregarAlCarrito(producto: Producto) {
     const itemExistente = this.carrito.find(item => item.producto.id === producto.id);
 
     if (itemExistente) {
-      itemExistente.cantidad++;
+      if (itemExistente.cantidad < (producto.stock || 0)) {
+        itemExistente.cantidad++;
+      } else {
+        this.mostrarError(`Stock máximo alcanzado para ${producto.nombre}`);
+        return;
+      }
     } else {
       this.carrito.push({
         producto,
@@ -309,8 +315,32 @@ export class ClientePortalComponent implements OnInit {
       this.mostrarError('El carrito está vacío');
       return;
     }
-    this.mostrarExito('Procediatiendo al pago... (próxima fase)');
-    // TODO: Implementar checkout y pago
+
+    const nuevaOrden: Orden = {
+      cliente: {} as any,
+      estado: 'PENDIENTE',
+      total: this.calcularTotal(),
+      detalles: this.carrito.map(item => ({
+        producto: { id: item.producto.id } as Producto,
+        cantidad: item.cantidad,
+        precioUnitario: item.precioUnitario,
+        subtotal: item.subtotal
+      }))
+    };
+
+    this.apiService.crearOrden(nuevaOrden).subscribe({
+      next: (ordenCreada) => {
+        this.mostrarExito(`¡Orden #${ordenCreada.id} generada exitosamente!`);
+        this.carrito = [];
+        this.cargarProductos();
+        this.cargarMisOrdenes();
+        this.activeTab = 'ordenes';
+      },
+      error: (err) => {
+        const errorMsg = err?.error?.message || 'Error al procesar la orden. Verifique el stock disponible.';
+        this.mostrarError(errorMsg);
+      }
+    });
   }
 
   private mostrarError(mensaje: string) {

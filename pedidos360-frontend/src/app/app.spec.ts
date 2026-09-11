@@ -24,11 +24,14 @@ class MsalBroadcastServiceMock {
   inProgress$ = of();
 }
 
+import { provideRouter } from '@angular/router';
+
 describe('App', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [App, HttpClientTestingModule],
       providers: [
+        provideRouter([]),
         { provide: MsalService, useClass: MsalServiceMock },
         { provide: MsalBroadcastService, useClass: MsalBroadcastServiceMock },
       ],

@@ -23,6 +23,7 @@ class SecurityMockMvcTest {
     @MockBean
     private JwtDecoder jwtDecoder;
 
+
     @Test
     void endpointProtegidoRechazaPeticionSinToken() throws Exception {
         mockMvc.perform(get("/api/me"))
@@ -37,10 +38,29 @@ class SecurityMockMvcTest {
     }
 
     @Test
+    void endpointAdminRechazaUsuarioConRolCliente() throws Exception {
+        mockMvc.perform(get("/api/admin-check")
+                .with(SecurityMockMvcRequestPostProcessors.jwt()
+                    .authorities(() -> "ROLE_CLIENTE")))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
     void endpointAdminAceptaRolAdmin() throws Exception {
         mockMvc.perform(get("/api/admin-check")
                 .with(SecurityMockMvcRequestPostProcessors.jwt()
                     .authorities(() -> "ROLE_ADMIN")))
+            .andExpect(status().isOk());
+    }
+
+    @Test
+    void endpointMeRetornaDetalleUsuarioAutenticado() throws Exception {
+        mockMvc.perform(get("/api/me")
+                .with(SecurityMockMvcRequestPostProcessors.jwt()
+                    .jwt(jwt -> jwt
+                        .claim("preferred_username", "estudiante@duoc.cl")
+                        .claim("name", "Estudiante Duoc")
+                        .claim("roles", java.util.List.of("CLIENTE")))))
             .andExpect(status().isOk());
     }
 }

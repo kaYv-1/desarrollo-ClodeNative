@@ -1,7 +1,7 @@
 import { Component, HostListener, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { RouterOutlet } from '@angular/router';
+import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { MsalService, MsalBroadcastService } from '@azure/msal-angular';
 import { InteractionStatus } from '@azure/msal-browser';
 import { Subject } from 'rxjs';
@@ -11,7 +11,7 @@ import { environment } from '../environments/environment';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })
@@ -22,9 +22,31 @@ export class App implements OnInit, OnDestroy {
   isAuthenticating = false;
   authError = '';
   httpAuthError = '';
+  isDemoMode = environment.demoMode;
+
+  hasAdminRole(): boolean {
+    if (this.isDemoMode) return true;
+    if (this.backendUser?.roles?.includes('ADMIN') || this.backendUser?.roles?.includes('ROLE_ADMIN')) return true;
+    const account = this.msalService.instance.getActiveAccount();
+    const claims = account?.idTokenClaims as any;
+    return claims?.roles?.includes('ADMIN') || claims?.roles?.includes('ROLE_ADMIN');
+  }
+
+  get userRolesDisplay(): string {
+    if (this.backendUser?.roles?.length) {
+      return this.backendUser.roles.join(', ');
+    }
+    const account = this.msalService.instance.getActiveAccount();
+    const claims = account?.idTokenClaims as any;
+    if (claims?.roles?.length) {
+      return claims.roles.join(', ');
+    }
+    return this.isLoggedIn ? 'CLIENTE' : '';
+  }
 
   private msalService = inject(MsalService);
   private msalBroadcastService = inject(MsalBroadcastService);
+  private router = inject(Router);
   private readonly http = inject(HttpClient);
   private readonly _destroying$ = new Subject<void>();
   private msalInitialized = false;
@@ -48,6 +70,9 @@ export class App implements OnInit, OnDestroy {
         name: 'Angel Demo',
         roles: ['ADMIN'],
       };
+      if (typeof window !== 'undefined' && (window.location.pathname === '/' || window.location.pathname === '')) {
+        this.router.navigate(['/portal']);
+      }
       return;
     }
 
@@ -88,10 +113,16 @@ export class App implements OnInit, OnDestroy {
     if (activeAccount) {
       this.isLoggedIn = true;
       this.userName = activeAccount.name || activeAccount.username || '';
+      if (typeof window !== 'undefined' && (window.location.pathname === '/' || window.location.pathname === '')) {
+        this.router.navigate(['/portal']);
+      }
     } else if (cachedAccounts.length > 0) {
       this.msalService.instance.setActiveAccount(cachedAccounts[0]);
       this.isLoggedIn = true;
       this.userName = cachedAccounts[0].name || cachedAccounts[0].username || '';
+      if (typeof window !== 'undefined' && (window.location.pathname === '/' || window.location.pathname === '')) {
+        this.router.navigate(['/portal']);
+      }
     } else if (this.msalInitialized) {
       this.isLoggedIn = false;
       this.userName = '';

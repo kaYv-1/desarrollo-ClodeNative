@@ -1,8 +1,7 @@
 import { Injectable } from '@angular/core';
 import { CanActivate, ActivatedRouteSnapshot, RouterStateSnapshot, Router } from '@angular/router';
 import { MsalService } from '@azure/msal-angular';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { Observable, of } from 'rxjs';
 import { environment } from '../../environments/environment';
 
 @Injectable({
@@ -22,25 +21,24 @@ export class RoleGuard implements CanActivate {
     const requiredRoles = route.data['roles'] as string[];
 
     if (environment.demoMode) {
-      return new Observable(observer => {
-        observer.next(requiredRoles?.includes('ADMIN') ?? true);
-        observer.complete();
-      });
+      return of(requiredRoles?.includes('ADMIN') ?? true);
     }
 
-    return this.checkUserRoles(requiredRoles);
+    return this.checkUserRoles(requiredRoles, state);
   }
 
-  private checkUserRoles(requiredRoles: string[]): Observable<boolean> {
+  private checkUserRoles(requiredRoles: string[], state?: RouterStateSnapshot): Observable<boolean> {
     const currentAccount = this.msalService.instance.getActiveAccount();
 
     if (!currentAccount) {
-      this.router.navigate(['/']);
-      return new Observable(obs => obs.next(false));
+      if (state && state.url !== '/' && state.url !== '') {
+        this.router.navigate(['/']);
+      }
+      return of(false);
     }
 
     if (!requiredRoles || requiredRoles.length === 0) {
-      return new Observable(obs => obs.next(true));
+      return of(true);
     }
 
     // Extract roles from JWT claims (Azure JWT)
@@ -52,10 +50,12 @@ export class RoleGuard implements CanActivate {
     );
 
     if (!hasRequiredRole) {
-      this.router.navigate(['/403']);
-      return new Observable(obs => obs.next(false));
+      if (state?.url !== '/403') {
+        this.router.navigate(['/403']);
+      }
+      return of(false);
     }
 
-    return new Observable(obs => obs.next(true));
+    return of(true);
   }
 }

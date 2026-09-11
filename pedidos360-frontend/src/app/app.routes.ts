@@ -13,6 +13,11 @@ const protectedGuards = environment.demoMode
 
 export const routes: Routes = [
   {
+    path: '',
+    pathMatch: 'full',
+    children: []
+  },
+  {
     path: 'admin',
     component: AdminDashboardComponent,
     canActivate: protectedGuards,
@@ -22,7 +27,7 @@ export const routes: Routes = [
     path: 'portal',
     component: ClientePortalComponent,
     canActivate: protectedGuards,
-    data: { roles: ['CLIENTE'] }
+    data: { roles: ['CLIENTE', 'ADMIN'] }
   },
   {
     path: '403',

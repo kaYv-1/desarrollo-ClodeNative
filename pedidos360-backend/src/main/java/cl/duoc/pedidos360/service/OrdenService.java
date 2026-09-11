@@ -1,9 +1,11 @@
 package cl.duoc.pedidos360.service;
 
+import cl.duoc.pedidos360.model.Cliente;
 import cl.duoc.pedidos360.model.DetallePedido;
 import cl.duoc.pedidos360.model.Orden;
 import cl.duoc.pedidos360.model.Orden.EstadoOrden;
 import cl.duoc.pedidos360.model.Producto;
+import cl.duoc.pedidos360.repository.ClienteRepository;
 import cl.duoc.pedidos360.repository.OrdenRepository;
 import cl.duoc.pedidos360.repository.DetallePedidoRepository;
 import cl.duoc.pedidos360.repository.ProductoRepository;
@@ -22,6 +24,32 @@ public class OrdenService {
     private final OrdenRepository ordenRepository;
     private final DetallePedidoRepository detallePedidoRepository;
     private final ProductoRepository productoRepository;
+    private final ClienteRepository clienteRepository;
+
+    @Transactional
+    public Orden crearOrdenParaUsuario(Orden orden, String userEmail, String userName) {
+        if (userEmail != null && !userEmail.isBlank()) {
+            Cliente cliente = clienteRepository.findByEmail(userEmail)
+                .orElseGet(() -> {
+                    Cliente nuevo = new Cliente();
+                    nuevo.setEmail(userEmail);
+                    nuevo.setNombre(userName != null && !userName.isBlank() ? userName : userEmail);
+                    nuevo.setTelefono("N/A");
+                    nuevo.setDireccion("N/A");
+                    nuevo.setCiudad("N/A");
+                    nuevo.setPais("Chile");
+                    return clienteRepository.save(nuevo);
+                });
+            orden.setCliente(cliente);
+        } else if (orden.getCliente() != null && orden.getCliente().getId() != null) {
+            Cliente cliente = clienteRepository.findById(orden.getCliente().getId())
+                .orElseThrow(() -> new IllegalArgumentException("Cliente no encontrado"));
+            orden.setCliente(cliente);
+        } else {
+            throw new IllegalArgumentException("Debe asociar un cliente válido a la orden");
+        }
+        return crearOrden(orden);
+    }
 
     @Transactional
     public Orden crearOrden(Orden orden) {
@@ -69,6 +97,7 @@ public class OrdenService {
         return ordenRepository.save(orden);
     }
 
+    @Transactional
     public Orden cambiarEstadoOrden(Long ordenId, EstadoOrden nuevoEstado) {
         Orden orden = ordenRepository.findById(ordenId)
             .orElseThrow(() -> new IllegalArgumentException("Orden no encontrada"));
@@ -78,6 +107,7 @@ public class OrdenService {
         return ordenRepository.save(orden);
     }
 
+    @Transactional
     public void eliminarOrden(Long id) {
         ordenRepository.deleteById(id);
     }

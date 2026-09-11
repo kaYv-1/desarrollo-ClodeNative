@@ -1,32 +1,52 @@
-<main class="auth-shell">
-  <section class="auth-card" aria-live="polite">
-    <h2>Pedidos360 - Control de Acceso</h2>
-    <p *ngIf="httpAuthError" class="error-message" role="alert">{{ httpAuthError }}</p>
+<header class="app-header">
+  <div class="brand">
+    <h2>📦 Pedidos360</h2>
+    <span *ngIf="isDemoMode" class="badge-demo">MODO DEMO</span>
+  </div>
 
-    <div *ngIf="!isLoggedIn" class="auth-content">
-      <p>Inicia sesión para acceder a la plataforma.</p>
+  <nav *ngIf="isLoggedIn" class="nav-menu">
+    <a routerLink="/portal" routerLinkActive="active" class="nav-btn">🛒 Portal Clientes</a>
+    <a routerLink="/admin" routerLinkActive="active" class="nav-btn" *ngIf="hasAdminRole()">⚙️ Panel Admin</a>
+  </nav>
+
+  <div class="user-session">
+    <div *ngIf="!isLoggedIn" class="login-actions">
       <button type="button" class="btn btn-primary" [disabled]="isAuthenticating" (click)="login()">
-        {{ isAuthenticating ? 'Abriendo Microsoft...' : 'Iniciar Sesión con Microsoft' }}
+        {{ isAuthenticating ? 'Conectando...' : 'Iniciar Sesión Azure AD' }}
       </button>
-      <p *ngIf="authError" class="error-message" role="alert">{{ authError }}</p>
+      <a *ngIf="!isDemoMode" href="/?demo=true" class="btn btn-secondary">Modo Demo</a>
     </div>
 
-    <div *ngIf="isLoggedIn" class="auth-content">
-      <p class="success-message"><strong>¡Autenticación exitosa!</strong></p>
-      <p *ngIf="userName">Usuario: <strong>{{ userName }}</strong></p>
-
-      <div *ngIf="backendUser" class="profile-card">
-        <p><strong>Perfil desde backend:</strong></p>
-        <p>Usuario: {{ backendUser.user || backendUser.preferred_username || 'No disponible' }}</p>
-        <p>Nombre: {{ backendUser.name || 'No disponible' }}</p>
-        <p>Roles: {{ backendUser.roles?.length ? backendUser.roles.join(', ') : 'Sin roles asignados' }}</p>
-      </div>
-
-      <button type="button" class="btn btn-danger" (click)="logout()">
-        Cerrar Sesión
-      </button>
+    <div *ngIf="isLoggedIn" class="user-details">
+      <span class="user-badge">👤 {{ userName }} <strong class="roles-tag">[{{ userRolesDisplay }}]</strong></span>
+      <button type="button" class="btn btn-danger btn-sm" (click)="logout()">Cerrar Sesión</button>
     </div>
-  </section>
+  </div>
+</header>
+
+<div *ngIf="httpAuthError" class="alert alert-error" role="alert">
+  ⚠️ {{ httpAuthError }}
+</div>
+
+<div *ngIf="authError" class="alert alert-error" role="alert">
+  ⚠️ {{ authError }}
+</div>
+
+<div *ngIf="!isLoggedIn" class="login-hero">
+  <div class="hero-card">
+    <h3>Bienvenido a Pedidos360 Cloud Native</h3>
+    <p>Plataforma de comercio electrónico con autenticación empresarial Microsoft Entra ID (Azure AD), microservicios en Spring Boot y despliegue en AWS.</p>
+    <div class="hero-buttons">
+      <button type="button" class="btn btn-lg btn-primary" [disabled]="isAuthenticating" (click)="login()">
+        🔑 Iniciar Sesión con Microsoft
+      </button>
+      <a *ngIf="!isDemoMode" href="/?demo=true" class="btn btn-lg btn-secondary">
+        ⚡ Entrar en Modo Demo Local
+      </a>
+    </div>
+  </div>
+</div>
+
+<main class="app-main-content">
+  <router-outlet></router-outlet>
 </main>
-
-<router-outlet></router-outlet>
