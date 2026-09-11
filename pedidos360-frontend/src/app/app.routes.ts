@@ -23,7 +23,7 @@ export const routes: Routes = [
     path: 'portal',
     component: ClientePortalComponent,
     canActivate: protectedGuards,
-    data: { roles: ['CLIENTE', 'ADMIN'] }
+    data: { roles: ['CLIENTE'] }
   },
   {
     path: '403',

@@ -18,28 +18,25 @@ import { environment } from '../environments/environment';
 export class App implements OnInit, OnDestroy {
   isLoggedIn = false;
   userName = '';
+  userEmail = '';
+  userRole: 'ADMIN' | 'CLIENTE' | null = null;
   backendUser: any = null;
   isAuthenticating = false;
   authError = '';
   httpAuthError = '';
+  noRoleError = false;
 
-  hasAdminRole(): boolean {
-    if (this.backendUser?.roles?.includes('ADMIN') || this.backendUser?.roles?.includes('ROLE_ADMIN')) return true;
-    const account = this.msalService.instance.getActiveAccount();
-    const claims = account?.idTokenClaims as any;
-    return claims?.roles?.includes('ADMIN') || claims?.roles?.includes('ROLE_ADMIN');
+  get isAdmin(): boolean {
+    return this.userRole === 'ADMIN';
   }
 
-  get userRolesDisplay(): string {
-    if (this.backendUser?.roles?.length) {
-      return this.backendUser.roles.join(', ');
-    }
-    const account = this.msalService.instance.getActiveAccount();
-    const claims = account?.idTokenClaims as any;
-    if (claims?.roles?.length) {
-      return claims.roles.join(', ');
-    }
-    return this.isLoggedIn ? 'CLIENTE' : '';
+  get isCliente(): boolean {
+    return this.userRole === 'CLIENTE';
+  }
+
+  // Keep for backward compat with template
+  hasAdminRole(): boolean {
+    return this.isAdmin;
   }
 
   private msalService = inject(MsalService);
@@ -59,9 +56,7 @@ export class App implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.msalBroadcastService.inProgress$
-      .pipe(
-        takeUntil(this._destroying$)
-      )
+      .pipe(takeUntil(this._destroying$))
       .subscribe((status: InteractionStatus) => {
         this.isAuthenticating = status !== InteractionStatus.None && status !== InteractionStatus.Startup;
       });
@@ -75,7 +70,9 @@ export class App implements OnInit, OnDestroy {
           }
           this.msalInitialized = true;
           this.checkAccount();
-          this.loadUserProfile(false);
+          if (this.isLoggedIn) {
+            this.loadUserProfile(false);
+          }
         } catch (err) {
           this.authError = this.getAuthErrorMessage(err);
           console.error('Error al procesar el retorno de Microsoft:', err);
@@ -89,34 +86,62 @@ export class App implements OnInit, OnDestroy {
   }
 
   checkAccount(): void {
-    const activeAccount = this.msalService.instance.getActiveAccount();
-    const cachedAccounts = this.msalService.instance.getAllAccounts();
+    const activeAccount = this.msalService.instance.getActiveAccount()
+      ?? (this.msalService.instance.getAllAccounts()[0] ?? null);
 
     if (activeAccount) {
+      if (!this.msalService.instance.getActiveAccount()) {
+        this.msalService.instance.setActiveAccount(activeAccount);
+      }
+
       this.isLoggedIn = true;
       this.userName = activeAccount.name || activeAccount.username || '';
-      if (typeof window !== 'undefined' && (window.location.pathname === '/' || window.location.pathname === '')) {
-        this.router.navigate(['/portal']);
+      this.userEmail = activeAccount.username || '';
+
+      // Extract roles from JWT claims (assigned in Azure AD App Roles)
+      const claims = activeAccount.idTokenClaims as any;
+      const roles: string[] = claims?.roles ?? [];
+
+      if (roles.some(r => r.toUpperCase() === 'ADMIN')) {
+        this.userRole = 'ADMIN';
+      } else if (roles.some(r => r.toUpperCase() === 'CLIENTE')) {
+        this.userRole = 'CLIENTE';
+      } else {
+        this.userRole = null;
       }
-    } else if (cachedAccounts.length > 0) {
-      this.msalService.instance.setActiveAccount(cachedAccounts[0]);
-      this.isLoggedIn = true;
-      this.userName = cachedAccounts[0].name || cachedAccounts[0].username || '';
-      if (typeof window !== 'undefined' && (window.location.pathname === '/' || window.location.pathname === '')) {
-        this.router.navigate(['/portal']);
-      }
+
+      this.noRoleError = this.userRole === null;
+      this.navigateByRole();
     } else if (this.msalInitialized) {
       this.isLoggedIn = false;
       this.userName = '';
+      this.userEmail = '';
+      this.userRole = null;
+      this.noRoleError = false;
     }
   }
 
-  login(): void {
-    if (this.isAuthenticating) {
-      return;
+  /** Redirects user to their role section after login */
+  private navigateByRole(): void {
+    const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+    // Only auto-navigate from root; don't interrupt if already on correct page
+    const isAtRoot = currentPath === '/' || currentPath === '';
+
+    if (!isAtRoot) return;
+
+    if (this.userRole === 'ADMIN') {
+      this.router.navigate(['/admin']);
+    } else if (this.userRole === 'CLIENTE') {
+      this.router.navigate(['/portal']);
     }
+    // No role → stays on root, noRoleError shows message
+  }
+
+  login(): void {
+    if (this.isAuthenticating) return;
 
     this.authError = '';
+    this.noRoleError = false;
     this.isAuthenticating = true;
 
     this.msalService.loginRedirect({
@@ -131,7 +156,7 @@ export class App implements OnInit, OnDestroy {
           return;
         }
         this.authError = this.getAuthErrorMessage(err);
-        console.error('Error en login popup:', err);
+        console.error('Error en login redirect:', err);
       },
       complete: () => {
         this.isAuthenticating = false;
@@ -145,23 +170,19 @@ export class App implements OnInit, OnDestroy {
       : '';
 
     if (code === 'popup_window_error' || code === 'empty_window_error') {
-      return 'Microsoft no pudo abrir la ventana de inicio de sesión. Permite las ventanas emergentes para localhost e inténtalo nuevamente.';
+      return 'Microsoft no pudo abrir la ventana de inicio de sesión. Permite las ventanas emergentes e inténtalo nuevamente.';
     }
-
     if (code === 'interaction_in_progress') {
       return 'Ya existe un inicio de sesión en progreso. Cierra la ventana de Microsoft y vuelve a intentarlo.';
     }
-
     if (code === 'redirect_uri_mismatch') {
-      return 'La URL actual no está registrada en Azure. Agrega el origen de esta página como URI de redirección SPA.';
+      return 'La URL actual no está registrada en Azure. Agrega el origen como URI de redirección SPA.';
     }
-
     return 'No se pudo iniciar sesión con Microsoft. Revisa la consola del navegador para ver el detalle.';
   }
 
   private loadUserProfile(allowInteraction: boolean): void {
     const activeAccount = this.msalService.instance.getActiveAccount();
-
     if (!activeAccount) {
       this.backendUser = null;
       return;
@@ -178,13 +199,12 @@ export class App implements OnInit, OnDestroy {
           console.error('No se pudo obtener el token silenciosamente:', err);
           return;
         }
-
         this.msalService.acquireTokenPopup({
           account: activeAccount,
           scopes: environment.azure.apiScopes,
         }).subscribe({
           next: () => this.fetchUserFromBackend(),
-          error: (err) => console.error('Error al obtener token de Azure AD:', err)
+          error: (e) => console.error('Error al obtener token de Azure AD:', e)
         });
       }
     });
@@ -192,9 +212,7 @@ export class App implements OnInit, OnDestroy {
 
   private fetchUserFromBackend(): void {
     this.http.get(`${environment.azure.apiEndpoint}/api/me`).subscribe({
-      next: (user) => {
-        this.backendUser = user;
-      },
+      next: (user) => { this.backendUser = user; },
       error: (err) => {
         console.error('Error al consultar el backend protegido:', err);
         this.backendUser = null;
@@ -207,15 +225,16 @@ export class App implements OnInit, OnDestroy {
     this.backendUser = null;
     this.isLoggedIn = false;
     this.userName = '';
+    this.userEmail = '';
+    this.userRole = null;
     this.authError = '';
+    this.noRoleError = false;
     this.msalService.instance.setActiveAccount(null);
 
     this.msalService.logoutPopup({
       postLogoutRedirectUri: environment.azure.postLogoutRedirectUri,
     }).subscribe({
-      error: (err) => {
-        console.error('Error en logout popup:', err);
-      }
+      error: (err) => console.error('Error en logout popup:', err)
     });
   }
 
