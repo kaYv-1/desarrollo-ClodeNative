@@ -12,14 +12,28 @@ import { ApiService, Producto, Orden, DetallePedido } from '../../services/api.s
       <h1>Portal de Cliente</h1>
 
       <div class="tabs">
-        <button (click)="activeTab = 'productos'" [class.active]="activeTab === 'productos'">Catálogo</button>
-        <button (click)="activeTab = 'carrito'" [class.active]="activeTab === 'carrito'">Carrito ({{ carrito.length }})</button>
-        <button (click)="activeTab = 'ordenes'" [class.active]="activeTab === 'ordenes'">Mis Órdenes</button>
+        <button (click)="seleccionarTab('productos')" [class.active]="activeTab === 'productos'">Catálogo</button>
+        <button (click)="seleccionarTab('carrito')" [class.active]="activeTab === 'carrito'">Carrito ({{ carrito.length }})</button>
+        <button (click)="seleccionarTab('ordenes')" [class.active]="activeTab === 'ordenes'">Mis Órdenes</button>
       </div>
 
       <div *ngIf="activeTab === 'productos'" class="tab-content">
-        <h2>Catálogo de Productos</h2>
-        <div class="productos-grid">
+        <div class="tab-header">
+          <h2>Catálogo de Productos</h2>
+          <button type="button" (click)="cargarProductos()" [disabled]="cargandoProductos" class="btn-refresh">
+            {{ cargandoProductos ? '🔄 Actualizando...' : '🔄 Refrescar Catálogo' }}
+          </button>
+        </div>
+
+        <div *ngIf="cargandoProductos && productos.length === 0" class="loading-state">
+          Cargando catálogo...
+        </div>
+
+        <div *ngIf="!cargandoProductos && productos.length === 0" class="no-productos">
+          No hay productos disponibles en este momento.
+        </div>
+
+        <div *ngIf="productos.length > 0" class="productos-grid">
           <div *ngFor="let producto of productos" class="producto-card">
             <h3>{{ producto.nombre }}</h3>
             <p>{{ producto.descripcion }}</p>
@@ -80,10 +94,21 @@ import { ApiService, Producto, Orden, DetallePedido } from '../../services/api.s
       </div>
 
       <div *ngIf="activeTab === 'ordenes'" class="tab-content">
-        <h2>Mis Órdenes</h2>
-        <div *ngIf="misOrdenes.length === 0" class="no-ordenes">
+        <div class="tab-header">
+          <h2>Mis Órdenes</h2>
+          <button type="button" (click)="cargarMisOrdenes()" [disabled]="cargandoOrdenes" class="btn-refresh">
+            {{ cargandoOrdenes ? '🔄 Actualizando...' : '🔄 Refrescar Órdenes' }}
+          </button>
+        </div>
+
+        <div *ngIf="cargandoOrdenes && misOrdenes.length === 0" class="loading-state">
+          Cargando tus órdenes...
+        </div>
+
+        <div *ngIf="!cargandoOrdenes && misOrdenes.length === 0" class="no-ordenes">
           No tienes órdenes
         </div>
+
         <div *ngIf="misOrdenes.length > 0">
           <table>
             <thead>
@@ -237,6 +262,40 @@ import { ApiService, Producto, Orden, DetallePedido } from '../../services/api.s
       color: #388e3c;
       background: #e8f5e9;
     }
+    .tab-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    .tab-header h2 {
+      margin: 0;
+    }
+    .btn-refresh {
+      background: #ffffff;
+      border: 1px solid #28a745;
+      color: #28a745;
+      font-weight: 600;
+      padding: 7px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9em;
+      transition: all 0.2s ease;
+    }
+    .btn-refresh:hover:not(:disabled) {
+      background: #28a745;
+      color: #ffffff;
+    }
+    .btn-refresh:disabled {
+      cursor: wait;
+      opacity: 0.6;
+    }
+    .loading-state, .no-productos {
+      text-align: center;
+      color: #666;
+      padding: 30px;
+      font-size: 1.05em;
+    }
   `]
 })
 export class ClientePortalComponent implements OnInit {
@@ -245,6 +304,9 @@ export class ClientePortalComponent implements OnInit {
   productos: Producto[] = [];
   misOrdenes: Orden[] = [];
   carrito: DetallePedido[] = [];
+
+  cargandoProductos = false;
+  cargandoOrdenes = false;
 
   errorMessage = '';
   successMessage = '';
@@ -256,19 +318,43 @@ export class ClientePortalComponent implements OnInit {
     this.cargarMisOrdenes();
   }
 
+  seleccionarTab(tab: 'productos' | 'carrito' | 'ordenes') {
+    this.activeTab = tab;
+    if (tab === 'productos') {
+      this.cargarProductos();
+    } else if (tab === 'ordenes') {
+      this.cargarMisOrdenes();
+    }
+  }
+
   cargarProductos() {
+    this.cargandoProductos = true;
     this.apiService.obtenerProductosActivos().subscribe({
-      next: (data) => this.productos = data,
-      error: () => this.mostrarError('Error cargando productos')
+      next: (data) => {
+        this.productos = data;
+        this.cargandoProductos = false;
+      },
+      error: () => {
+        this.mostrarError('Error cargando productos');
+        this.cargandoProductos = false;
+      }
     });
   }
 
   cargarMisOrdenes() {
+    this.cargandoOrdenes = true;
     this.apiService.obtenerTodasLasOrdenes().subscribe({
-      next: (data) => this.misOrdenes = data,
-      error: () => this.mostrarError('Error al consultar las órdenes')
+      next: (data) => {
+        this.misOrdenes = data;
+        this.cargandoOrdenes = false;
+      },
+      error: () => {
+        this.mostrarError('Error al consultar las órdenes');
+        this.cargandoOrdenes = false;
+      }
     });
   }
+
 
   agregarAlCarrito(producto: Producto) {
     const itemExistente = this.carrito.find(item => item.producto.id === producto.id);

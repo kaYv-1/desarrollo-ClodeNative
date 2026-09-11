@@ -12,14 +12,27 @@ import { ApiService, Cliente, Producto, Orden } from '../../services/api.service
       <h1>Panel Administrativo</h1>
 
       <div class="tabs">
-        <button (click)="activeTab = 'clientes'" [class.active]="activeTab === 'clientes'">Clientes</button>
-        <button (click)="activeTab = 'productos'" [class.active]="activeTab === 'productos'">Productos</button>
-        <button (click)="activeTab = 'ordenes'" [class.active]="activeTab === 'ordenes'">Órdenes</button>
+        <button (click)="seleccionarTab('clientes')" [class.active]="activeTab === 'clientes'">Clientes</button>
+        <button (click)="seleccionarTab('productos')" [class.active]="activeTab === 'productos'">Productos</button>
+        <button (click)="seleccionarTab('ordenes')" [class.active]="activeTab === 'ordenes'">Órdenes</button>
       </div>
 
       <div *ngIf="activeTab === 'clientes'" class="tab-content">
-        <h2>Gestión de Clientes</h2>
-        <button (click)="showClienteForm = !showClienteForm">Crear Cliente</button>
+        <div class="tab-header">
+          <h2>Gestión de Clientes</h2>
+          <div class="header-actions">
+            <button type="button" (click)="showClienteForm = !showClienteForm">
+              {{ showClienteForm ? 'Cerrar Formulario' : 'Crear Cliente' }}
+            </button>
+            <button type="button" (click)="cargarClientes()" [disabled]="cargandoClientes" class="btn-refresh">
+              {{ cargandoClientes ? '🔄 Actualizando...' : '🔄 Refrescar Clientes' }}
+            </button>
+          </div>
+        </div>
+
+        <div *ngIf="cargandoClientes && clientes.length === 0" class="loading-state">
+          Cargando clientes...
+        </div>
 
         <form *ngIf="showClienteForm" (ngSubmit)="crearCliente()" class="form">
           <input [(ngModel)]="nuevoCliente.nombre" name="nombre" placeholder="Nombre" required>
@@ -55,8 +68,21 @@ import { ApiService, Cliente, Producto, Orden } from '../../services/api.service
       </div>
 
       <div *ngIf="activeTab === 'productos'" class="tab-content">
-        <h2>Gestión de Productos</h2>
-        <button (click)="showProductoForm = !showProductoForm">Crear Producto</button>
+        <div class="tab-header">
+          <h2>Gestión de Productos</h2>
+          <div class="header-actions">
+            <button type="button" (click)="showProductoForm = !showProductoForm">
+              {{ showProductoForm ? 'Cerrar Formulario' : 'Crear Producto' }}
+            </button>
+            <button type="button" (click)="cargarProductos()" [disabled]="cargandoProductos" class="btn-refresh">
+              {{ cargandoProductos ? '🔄 Actualizando...' : '🔄 Refrescar Productos' }}
+            </button>
+          </div>
+        </div>
+
+        <div *ngIf="cargandoProductos && productos.length === 0" class="loading-state">
+          Cargando productos...
+        </div>
 
         <form *ngIf="showProductoForm" (ngSubmit)="crearProducto()" class="form">
           <input [(ngModel)]="nuevoProducto.nombre" name="nombre" placeholder="Nombre" required>
@@ -92,7 +118,19 @@ import { ApiService, Cliente, Producto, Orden } from '../../services/api.service
       </div>
 
       <div *ngIf="activeTab === 'ordenes'" class="tab-content">
-        <h2>Gestión de Órdenes</h2>
+        <div class="tab-header">
+          <h2>Gestión de Órdenes</h2>
+          <div class="header-actions">
+            <button type="button" (click)="cargarOrdenes()" [disabled]="cargandoOrdenes" class="btn-refresh">
+              {{ cargandoOrdenes ? '🔄 Actualizando...' : '🔄 Refrescar Órdenes' }}
+            </button>
+          </div>
+        </div>
+
+        <div *ngIf="cargandoOrdenes && ordenes.length === 0" class="loading-state">
+          Cargando órdenes...
+        </div>
+
         <table>
           <thead>
             <tr>
@@ -202,6 +240,47 @@ import { ApiService, Cliente, Producto, Orden } from '../../services/api.service
       border-radius: 4px;
       margin-top: 20px;
     }
+    .tab-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .tab-header h2 {
+      margin: 0;
+    }
+    .header-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .btn-refresh {
+      background: #ffffff;
+      border: 1px solid #007bff;
+      color: #007bff;
+      font-weight: 600;
+      padding: 7px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9em;
+      transition: all 0.2s ease;
+    }
+    .btn-refresh:hover:not(:disabled) {
+      background: #007bff;
+      color: #ffffff;
+    }
+    .btn-refresh:disabled {
+      cursor: wait;
+      opacity: 0.6;
+    }
+    .loading-state {
+      text-align: center;
+      color: #666;
+      padding: 20px;
+      font-size: 1.05em;
+    }
   `]
 })
 export class AdminDashboardComponent implements OnInit {
@@ -213,6 +292,10 @@ export class AdminDashboardComponent implements OnInit {
   clientes: Cliente[] = [];
   productos: Producto[] = [];
   ordenes: Orden[] = [];
+
+  cargandoClientes = false;
+  cargandoProductos = false;
+  cargandoOrdenes = false;
 
   nuevoCliente: Cliente = {
     nombre: '',
@@ -239,20 +322,62 @@ export class AdminDashboardComponent implements OnInit {
     this.cargarDatos();
   }
 
+  seleccionarTab(tab: 'clientes' | 'productos' | 'ordenes') {
+    this.activeTab = tab;
+    if (tab === 'clientes') {
+      this.cargarClientes();
+    } else if (tab === 'productos') {
+      this.cargarProductos();
+    } else if (tab === 'ordenes') {
+      this.cargarOrdenes();
+    }
+  }
+
   cargarDatos() {
+    this.cargarClientes();
+    this.cargarProductos();
+    this.cargarOrdenes();
+  }
+
+  cargarClientes() {
+    this.cargandoClientes = true;
     this.apiService.obtenerTodosLosClientes().subscribe({
-      next: (data) => this.clientes = data,
-      error: (err) => this.mostrarError('Error cargando clientes')
+      next: (data) => {
+        this.clientes = data;
+        this.cargandoClientes = false;
+      },
+      error: () => {
+        this.mostrarError('Error cargando clientes');
+        this.cargandoClientes = false;
+      }
     });
+  }
 
+  cargarProductos() {
+    this.cargandoProductos = true;
     this.apiService.obtenerTodosLosProductos().subscribe({
-      next: (data) => this.productos = data,
-      error: (err) => this.mostrarError('Error cargando productos')
+      next: (data) => {
+        this.productos = data;
+        this.cargandoProductos = false;
+      },
+      error: () => {
+        this.mostrarError('Error cargando productos');
+        this.cargandoProductos = false;
+      }
     });
+  }
 
+  cargarOrdenes() {
+    this.cargandoOrdenes = true;
     this.apiService.obtenerTodasLasOrdenes().subscribe({
-      next: (data) => this.ordenes = data,
-      error: (err) => this.mostrarError('Error cargando órdenes')
+      next: (data) => {
+        this.ordenes = data;
+        this.cargandoOrdenes = false;
+      },
+      error: () => {
+        this.mostrarError('Error cargando órdenes');
+        this.cargandoOrdenes = false;
+      }
     });
   }
 

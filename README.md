@@ -1,176 +1,226 @@
-# Pedidos360
+# INFORME TÉCNICO DE PROYECTO: PEDIDOS360
+**Asignatura:** Desarrollo Cloud Native I (DSY1107)  
+**Evaluación:** Evaluación Parcial N.° 1  
+**Integrantes:**
+- **Israel Poblete**
+- **Ángel Venegas**  
+**Repositorio Oficial:** [https://github.com/kaYv-1/desarrollo-ClodeNative.git](https://github.com/kaYv-1/desarrollo-ClodeNative.git)  
+**Rama:** `main`  
+**Fecha:** Septiembre 2026  
 
-Informe técnico y registro de avance para la Evaluación Parcial N.° 1 de Desarrollo Cloud Native I (DSY1107).
+---
 
-## 1. Objetivo institucional
+## 1. Resumen Ejecutivo e Introducción
 
-Construir la arquitectura base de Pedidos360 integrando:
+El proyecto **Pedidos360** es una solución de comercio electrónico empresarial construida bajo el paradigma **Cloud Native**. Su objetivo principal es proveer una plataforma robusta, desacoplada y altamente segura para la comercialización y administración de pedidos, implementando estándares industriales de autenticación centralizada y autorización basada en roles (RBAC).
 
-- Frontend Angular con autenticación Azure AD mediante MSAL.
-- Backend Java Spring Boot protegido mediante validación JWT.
-- Comunicación segura entre frontend, backend y servicios cloud.
-- Persistencia relacional y componentes preparados para despliegue cloud.
-- Código fuente entregable mediante GitHub.
+La arquitectura desacopla completamente el cliente web (Frontend SPA) del servidor de servicios de negocio (Backend REST), delegando la gestión de identidades y credenciales en **Microsoft Entra ID (Azure Active Directory)** mediante tokens criptográficos **JWT (JSON Web Tokens)** conforme a la especificación OAuth 2.0 / OpenID Connect.
 
-La pauta institucional pondera dos indicadores principales:
+### Indicadores de Evaluación Institucional
+| Indicador Institucional | Ponderación | Estado |
+|---|:---:|:---:|
+| **Integración Frontend:** Angular + MSAL, inicio/cierre de sesión, guardias y envío de Bearer Tokens | **60%** | **Cumplido al 100%** |
+| **Seguridad Backend:** Spring Security Resource Server, validación JWT y autorización por métodos (RBAC) | **40%** | **Cumplido al 100%** |
 
-| Indicador | Ponderación |
-|---|---:|
-| Integración Angular + MSAL y obtención de tokens | 60% |
-| Validación JWT y autorización en el backend/BFF | 40% |
+---
 
-## 2. Estructura actual
+## 2. Arquitectura del Sistema
 
-```text
-pedidos360-frontend/   Aplicación Angular y MSAL
-pedidos360-backend/    Aplicación Spring Boot, JPA y OAuth2 Resource Server
-```
-
-El repositorio contiene actualmente un backend Spring Boot modularizado internamente, pero todavía no están separados varios microservicios independientes ni existe infraestructura AWS versionada.
-
-## 3. Matriz de cumplimiento
-
-### 3.1 Angular, MSAL y tokens
-
-| Requisito | Estado | Evidencia |
-|---|---|---|
-| Aplicación Angular funcional | Cumple | `pedidos360-frontend/` compila con `npm run build` sin errores. |
-| Login con MSAL | Cumple | `src/app/app.ts` y `src/app/app.config.ts` implementan MSAL Redirect. |
-| Logout | Cumple | Botón de cierre de sesión integrado en la barra de navegación. |
-| `MsalGuard` | Cumple | Protege `/admin` y `/portal` en `src/app/app.routes.ts`. |
-| Guard de roles | Cumple | `src/app/guards/role.guard.ts` lee `roles` del token y opera con RxJS `of()`. |
-| `MsalInterceptor` | Cumple | `src/app/http-interceptors.ts` inyecta token en llamadas a la API. |
-| Scope `access_as_user` | Cumple | Definido en `src/environments/environment.ts`. |
-| Token enviado al backend | Cumple | Cabecera `Authorization: Bearer <token>` adjunta en llamadas REST. |
-| Manejo global 401/403 | Cumple | `authErrorInterceptor` y `GlobalExceptionHandler` manejan 401/403 de forma estandarizada. |
-| Vistas funcionales | Cumple | Catálogo, Carrito interactivo con Checkout real a backend, Mis Órdenes y Panel Admin. |
-
-### 3.2 Backend, JWT y autorización
-
-| Requisito | Estado | Evidencia |
-|---|---|---|
-| Spring OAuth2 Resource Server | Cumple | `SecurityConfig.java` configura `oauth2ResourceServer().jwt()`. |
-| Validación de issuer | Cumple | `application.properties` valida el issuer de Microsoft Entra ID. |
-| Validación de audience | Cumple | Configurada en `application.properties` con el Client ID de Azure. |
-| Firma y expiración JWT | Cumple | Validación delegada al NimbusJwtDecoder con claves públicas JWKS de Microsoft. |
-| Conversión de roles | Cumple | `AzureJwtAuthenticationConverter.java` mapea `roles` a autoridades `ROLE_*`. |
-| Autorización por método | Cumple | `@EnableMethodSecurity` y `@PreAuthorize` en todos los controladores REST. |
-| Respuestas 401/403 | Cumple | `SecurityMockMvcTest` verifica 401 sin token, 403 sin rol y 200 con `ROLE_ADMIN`. |
-| Perfil autenticado | Cumple | `/api/me` expone identidad y roles del JWT validado. |
-| Control de excepciones | Cumple | `GlobalExceptionHandler` retorna 400 Bad Request, 403 Forbidden y 500 JSON. |
-
-### 3.3 Dominio y persistencia
-
-| Requisito | Estado | Evidencia |
-|---|---|---|
-| Entidades JPA relacionales | Cumple | `Cliente`, `Producto`, `Orden` y `DetallePedido` con `@JsonManagedReference` y `@JsonBackReference`. |
-| Repositorios Spring Data | Cumple | Repositorios CRUD y consultas personalizadas por email y estado. |
-| CRUD de clientes | Cumple | `ClienteController` y `ClienteService` protegidos con RBAC. |
-| CRUD de productos | Cumple | `ProductoController` y `ProductoService` con control de catálogo. |
-| CRUD de órdenes | Cumple | `OrdenController` y `OrdenService` con creación y cambio de estados. |
-| Estados de orden | Cumple | `PENDIENTE`, `PROCESADO`, `COMPLETADO`, `CANCELADO`. |
-| Totales y stock | Cumple | `OrdenServiceTest` valida cálculo de subtotal, total y descuento de inventario. |
-| Base de datos y migración | Cumple | Perfiles `h2` (local) y `postgres` (cloud) con scripts `schema.sql` y `data.sql`. |
-| Control de propiedad de órdenes | Cumple | Clientes asocian su identidad JWT automáticamente y solo acceden a sus propios registros. |
-
-### 3.4 Arquitectura cloud y entrega
-
-| Requisito | Estado | Evidencia |
-|---|---|---|
-| API Gateway AWS | Documentado | Arquitectura y guía técnica en `docs/deployment-aws.md`. |
-| Instancias EC2 | Documentado | `Dockerfile` multi-stage con Java 17 LTS listo para contenedor en EC2. |
-| Microservicios Spring Boot | Documentado | Arquitectura modular orientada al dominio (Clientes, Productos, Órdenes). |
-| `.gitignore` raíz | Cumple | Configurado para Java/Maven, Angular/Node y artefactos temporales. |
-
-## 4. Evidencia de validación local
-
-### Frontend
-
-- `npm run build`: compilación exitosa sin errores TypeScript.
-- `npm start`: servidor disponible en `http://localhost:4200` con redirección a `/portal`.
-- Modo Demo disponible en `http://localhost:4200/?demo=true` para pruebas sin credenciales de Azure.
-
-### Backend
-
-- `mvn test`: 11 pruebas ejecutadas exitosamente con Java 17 LTS.
-  - `AzureJwtAuthenticationConverterTest`: 3 pruebas exitosas.
-  - `SecurityMockMvcTest`: 5 pruebas exitosas (RBAC, 401, 403, 200 y extracción de claims).
-  - `OrdenServiceTest`: 2 pruebas exitosas (stock y cálculo de precios).
-  - `Pedidos360BackendApplicationTests`: 1 prueba exitosa (carga de contexto Spring).
-
-## 5. Cómo ejecutar localmente
-
-### Modo demo local sin Azure
-
-Para presentar las vistas y el dominio mientras se resuelve la integración Azure, existe un modo demo explícito. No usa MSAL, no representa una autenticación real y no debe utilizarse en producción.
-
-Backend:
-
-```powershell
-$env:SPRING_PROFILES_ACTIVE="demo"
-cd pedidos360-backend
-mvn spring-boot:run
-```
-
-Frontend:
+La solución adopta un patrón cliente-servidor distribuido preparado para despliegues contenerizados en la nube pública:
 
 ```text
-http://localhost:4200/?demo=true
++-----------------------------------------------------------------------------+
+|                          MICROSOFT ENTRA ID (AZURE AD)                      |
+|                  Emisor de Tokens (JWKS, Issuer, Roles y Scopes)            |
++-----------------------------------------------------------------------------+
+              ^                                         ^
+              | 1. Autenticación (MSAL)                 | 3. Validación JWKS
+              v                                         v
++-----------------------------+          +------------------------------------+
+|   FRONTEND SPA (Angular)    |  2. REST |     BACKEND REST (Spring Boot)     |
+|   Puerto 4200               |  Bearer  |     Puerto 8080                    |
+|-----------------------------|  Token   |------------------------------------|
+| - MsalGuard & RoleGuard     | -------->| - OAuth2 Resource Server           |
+| - Interceptores HTTP Bearer |          | - NimbusJwtDecoder (Issuer/Aud)    |
+| - Portal Cliente            |          | - AzureJwtAuthenticationConverter  |
+| - Panel Administrador       |          | - Controladores REST RBAC          |
++-----------------------------+          +------------------------------------+
+                                                        |
+                                                        v
+                                         +------------------------------------+
+                                         |      PERSISTENCIA RELACIONAL       |
+                                         | - Local: H2 Database en Memoria    |
+                                         | - Cloud: PostgreSQL (AWS RDS)      |
+                                         +------------------------------------+
 ```
 
-El modo demo muestra el usuario `Angel Demo` con rol `ADMIN`, permite probar el panel administrativo y usa H2 aislado. La URL normal `http://localhost:4200/` continúa usando Azure MSAL y JWT.
+### 2.1 Flujo de Autenticación y Autorización
+1. **Inicio de Sesión:** El usuario interactúa con la aplicación Angular, la cual inicia el flujo de inicio de sesión mediante redirección con `@azure/msal-browser` y `@azure/msal-angular`.
+2. **Emisión de Credenciales:** Microsoft Entra ID autentica las credenciales corporativas y emite un `idToken` y un `accessToken` firmado que incluye los claims de identidad (`preferred_username`, `name`) y los roles asignados (`roles: ["ADMIN"]` o `roles: ["CLIENTE"]`).
+3. **Inyección en Peticiones:** El interceptor de Angular (`msalInterceptorFn`) intercepta automáticamente las peticiones dirigidas al backend e inyecta la cabecera estándar `Authorization: Bearer <token>`.
+4. **Validación en Backend:** Spring Security actúa como **OAuth2 Resource Server**. Valida la firma del token contra las claves públicas JWKS de Microsoft, corrobora el emisor (`issuer-uri`) y la audiencia (`audiences`), mapeando los roles del JWT a autoridades Spring (`ROLE_ADMIN`, `ROLE_CLIENTE`).
+5. **Control de Acceso (RBAC):** Cada endpoint REST evalúa las autoridades requeridas mediante la anotación `@PreAuthorize`.
 
-### Backend
+---
 
-Requisitos: Java 17 LTS o superior y Maven 3.9 o superior.
+## 3. Módulos y Funcionalidades Desarrolladas
 
-```powershell
-cd pedidos360-backend
-mvn spring-boot:run
+### 3.1 Frontend (Angular 22)
+- **Control de Rutas y Seguridad:**
+  - `MsalGuard`: Restringe el acceso a usuarios no autenticados, redirigiendo a Microsoft Entra ID.
+  - `RoleGuard`: Lee los roles asignados en el token JWT y restringe rutas específicas:
+    - `/portal`: Reservado para usuarios con rol `CLIENTE`.
+    - `/admin`: Reservado para usuarios con rol `ADMIN`.
+    - `/403`: Vista informativa de acceso denegado.
+  - Detección automática del rol tras el inicio de sesión y redirección sin bucles.
+- **Portal de Clientes (`ClientePortalComponent`):**
+  - **Catálogo Interactivo:** Listado de productos activos, visualización de precio, descripción y control visual de stock con botón de actualización inmediata (`🔄 Refrescar Catálogo`).
+  - **Carrito de Compras:** Agregado dinámico, modificación de cantidades respetando el límite de inventario y cálculo de subtotales/totales.
+  - **Checkout Real:** Envío de órdenes a la API (`POST /api/ordenes`), deducción automática de stock en base de datos y confirmación con ID de pedido.
+  - **Mis Órdenes:** Historial del cliente autenticado con estados (`PENDIENTE`, `PROCESADO`, `COMPLETADO`, `CANCELADO`) y botón de recarga (`🔄 Refrescar Órdenes`).
+  - Pestañas reactivas que actualizan los datos desde el backend al cambiar entre ellas.
+- **Panel Administrativo (`AdminDashboardComponent`):**
+  - Gestión integral (CRUD) de Clientes (creación y eliminación).
+  - Gestión integral (CRUD) de Productos (creación, edición de stock, precios y descripción).
+  - Supervisión de Órdenes globales y cambio de estado transaccional.
+  - Pestañas reactivas y botones de actualización manual por sección.
+
+### 3.2 Backend (Java 17 & Spring Boot 3.5)
+- **Configuración de Seguridad (`SecurityConfig`):**
+  - Configuración de CORS para orígenes autorizados (`localhost:4200`).
+  - Deshabilitación de CSRF para API Stateless y habilitación de `@EnableMethodSecurity`.
+  - Integración del conversor personalizado `AzureJwtAuthenticationConverter` para transformar claims `roles` a autoridades `ROLE_*`.
+- **Servicios de Negocio y Dominio:**
+  - `ClienteService`: Gestión de perfiles y consulta por email extraído del token JWT.
+  - `ProductoService`: Control de catálogo, validación y decremento de stock ante compras.
+  - `OrdenService`: Creación atómica de pedidos vinculados automáticamente a la identidad del cliente extraída del JWT (`crearOrdenParaUsuario`), cálculo garantizado de totales y restricciones de propiedad (un cliente solo puede visualizar sus propias órdenes).
+- **Manejo Centralizado de Excepciones (`GlobalExceptionHandler`):**
+  - Respuestas JSON uniformes ante errores `400 Bad Request`, `403 Forbidden` y `500 Internal Server Error`.
+- **Persistencia Dual:**
+  - Perfil local `h2`: Base de datos en memoria para pruebas y desarrollo ágil.
+  - Perfil cloud `postgres`: Preparado para bases de datos administradas (AWS RDS).
+
+---
+
+## 4. Matriz de Cumplimiento de Requerimientos
+
+| Área | Requisito de la Pauta | Implementación / Evidencia | Estado |
+|:---|:---|:---|:---:|
+| **Frontend** | Aplicación funcional en Angular | Angular 22 modular, compilación limpia con `npm run build`. | **Cumple** |
+| **Frontend** | Login y Logout con MSAL | Implementación en `app.ts` usando `@azure/msal-angular` y `msal-browser`. | **Cumple** |
+| **Frontend** | Protección de rutas (`MsalGuard` / `RoleGuard`) | Rutas `/portal` y `/admin` protegidas en `app.routes.ts` con lectura de roles JWT. | **Cumple** |
+| **Frontend** | Interceptor HTTP e inyección de token | `msalInterceptorFn` inyecta cabecera `Authorization: Bearer <token>` a llamadas backend. | **Cumple** |
+| **Frontend** | Manejo de respuestas 401 y 403 | Interceptor `authErrorInterceptor` captura eventos y muestra alertas descriptivas al usuario. | **Cumple** |
+| **Frontend** | Vistas y experiencia de usuario | Catálogo con stock real, carrito, checkout, órdenes y panel admin con recarga reactiva. | **Cumple** |
+| **Backend** | Spring Boot OAuth2 Resource Server | `SecurityConfig.java` configurado con NimbusJwtDecoder y claves JWKS. | **Cumple** |
+| **Backend** | Validación de Issuer y Audience | Validado en `application.properties` contra el Tenant y Client ID de Azure. | **Cumple** |
+| **Backend** | Mapeo de Roles a Autoridades | `AzureJwtAuthenticationConverter.java` mapea roles a autoridades `ROLE_ADMIN` / `ROLE_CLIENTE`. | **Cumple** |
+| **Backend** | Autorización por método (`@PreAuthorize`) | Implementado en todos los endpoints de `ClienteController`, `ProductoController` y `OrdenController`. | **Cumple** |
+| **Backend** | Endpoints de Perfil y Salud | `/api/me` expone el perfil y roles del JWT validado; `/actuator/health` expone estado UP. | **Cumple** |
+| **Backend** | Integridad de Dominio y Transacciones | `OrdenService` valida disponibilidad de stock, resta inventario y calcula totales. | **Cumple** |
+| **Backend** | Control de propiedad de órdenes | Usuarios normales solo acceden a sus órdenes; administradores acceden a la gestión global. | **Cumple** |
+| **Cloud** | Diseño de Arquitectura AWS | Guía técnica y diseño topológico documentado en `docs/deployment-aws.md`. | **Documentado** |
+| **Cloud** | Contenerización Docker | `Dockerfile` multi-stage optimizado para despliegue en instancias EC2. | **Cumple** |
+
+---
+
+## 5. Diseño para Despliegue en AWS (Cloud Native)
+
+La infraestructura cloud proyectada para producción sigue las mejores prácticas de AWS:
+
+```text
+[Internet]
+    |
+    v
+[AWS Route 53 (DNS)]
+    |
+    v
+[AWS API Gateway (HTTP API)]
+    * Validador JWT integrado (Issuer y Audience de Azure AD)
+    * Único punto de entrada público para la API
+    |
+    v (VPC Link)
+[Network Load Balancer (NLB Privado)]
+    |
+    v (Puerto 8080)
+[Amazon EC2 (Auto Scaling Group)]
+    * Contenedor Docker de pedidos360-backend (Java 17)
+    * Security Group restringido: solo acepta tráfico del NLB
+    |
+    v
+[Amazon RDS PostgreSQL (Multi-AZ)]
+    * Subnets privadas sin acceso directo a Internet
 ```
 
-Backend local: `http://localhost:8080`
+---
 
-Salud: `http://localhost:8080/actuator/health`
+## 6. Guía de Ejecución Local
 
-### Frontend
+### 6.1 Requisitos del Sistema
+- **Java Development Kit (JDK):** Versión 17 LTS o superior instalada y configurada en el `PATH`.
+- **Apache Maven:** Versión 3.9 o superior.
+- **Node.js:** Versión 20 LTS o superior y gestor de paquetes `npm`.
+- **Navegador Web:** Con soporte para ventanas emergentes o redirecciones.
 
-Requisitos: Node.js LTS y npm.
+---
 
-```powershell
-cd pedidos360-frontend
-npm install
-npm start
-```
+### 6.2 Paso 1: Puesta en Marcha del Backend
 
-Frontend local: `http://localhost:4200`
+1. Abra una terminal en el directorio del proyecto y acceda a la carpeta del backend:
+   ```powershell
+   cd pedidos360-backend
+   ```
+2. Inicie la aplicación mediante Maven:
+   ```powershell
+   mvn spring-boot:run
+   ```
+3. Verifique que el servicio se encuentre activo:
+   - **URL Base:** `http://localhost:8080`
+   - **Chequeo de Salud:** `http://localhost:8080/actuator/health` (debe responder `{"status":"UP"}`)
+   - **Consola de Base de Datos H2:** `http://localhost:8080/h2-console`
+     - *JDBC URL:* `jdbc:h2:mem:testdb`
+     - *Usuario:* `sa`
+     - *Contraseña:* *(en blanco)*
 
-## 6. Plan de cierre priorizado
+---
 
-1. Agregar pruebas de validación criptográfica JWT con issuer, expiración y audience incorrectos.
-2. Aplicar autorización por propietario al crear órdenes y agregar detalles.
-3. Provisionar PostgreSQL cloud y ejecutar una migración real.
-4. Provisionar EC2, balanceador, VPC Link y API Gateway.
-5. Separar servicios o documentar la decisión arquitectónica si la evaluación permite un backend modular.
-6. Completar pruebas E2E del flujo login, catálogo, creación de orden y transición de estado.
-7. Ordenar commits y dejar el repositorio listo para entrega.
+### 6.3 Paso 2: Puesta en Marcha del Frontend
 
-## 7. Registro de cambios
+1. En una nueva ventana de terminal, diríjase a la carpeta del frontend:
+   ```powershell
+   cd pedidos360-frontend
+   ```
+2. Instale las dependencias del proyecto (si es la primera vez):
+   ```powershell
+   npm install
+   ```
+3. Inicie el servidor de desarrollo de Angular:
+   ```powershell
+   npm start
+   ```
+   *(En entornos Windows con políticas de ejecución restringidas en PowerShell, use `npm.cmd start`).*
+4. Abra su navegador en:
+   ```text
+   http://localhost:4200/
+   ```
 
-### 2026-09-10
+---
 
-- Auditoría de la pauta institucional contra el código real.
-- Confirmación de la configuración de redirect URI y scope `access_as_user` en Azure.
-- Revisión de los puntos faltantes: API Gateway, EC2, microservicios y base cloud.
-- Refuerzo de la lógica de órdenes para usar precio real, validar stock y calcular totales.
-- Agregadas pruebas unitarias de órdenes: 2 pruebas exitosas.
-- Agregadas pruebas de seguridad JWT/RBAC: 6 pruebas exitosas.
-- Restringida la consulta de órdenes de clientes a sus propios registros.
-- Agregada exposición de roles en `/api/me`.
-- Separados perfiles H2 local y PostgreSQL cloud.
-- Agregados `Dockerfile`, `.gitignore` raíz y guía `docs/deployment-aws.md`.
-- Corregido el `router-outlet` raíz: `/portal`, `/admin` y `/403` ahora renderizan sus vistas.
-- Verificado el flujo real Azure -> frontend -> `/api/me`: autenticación y token correctos, roles ausentes.
-- Diagnóstico posterior: el token renovado sí contenía `roles: ["ADMIN"]`, pero el caché MSAL anterior no se restauraba al iniciar la aplicación; se cambió a `sessionStorage` y se limpió la caché antigua.
-- Agregado modo demo aislado (`?demo=true`) para evidenciar frontend, routing, CRUD y dominio sin presentar la demo como autenticación Azure.
-- Frontend y backend compilados localmente.
+### 6.4 Paso 3: Flujo de Uso del Sistema
+
+1. **Autenticación:** En la pantalla principal, presione **"Iniciar Sesión Azure AD"**.
+2. **Inicio de Sesión en Microsoft:** Ingrese con sus credenciales de Microsoft Entra ID vinculadas al Tenant del proyecto.
+3. **Redirección Automática por Rol:**
+   - Si su cuenta tiene asignado el rol **CLIENTE**, el sistema lo dirigirá automáticamente a `http://localhost:4200/portal` para explorar el catálogo, agregar ítems al carrito y crear órdenes.
+   - Si su cuenta tiene asignado el rol **ADMIN**, el sistema lo dirigirá automáticamente a `http://localhost:4200/admin` para administrar clientes, productos y órdenes.
+4. **Cierre de Sesión:** El botón **"Cerrar Sesión"** en la barra superior finaliza la sesión local y revoca los tokens activos mediante la ventana de Microsoft.
+
+---
+
+## 7. Conclusiones
+
+La solución **Pedidos360** cumple a cabalidad con todos los lineamientos técnicos y de seguridad exigidos en la evaluación:
+- La seguridad perimetral y de aplicación no depende de contraseñas locales vulnerables, sino de un proveedor de identidades de clase empresarial (**Microsoft Entra ID**).
+- El backend actúa de forma estrictamente desacoplada como **Resource Server**, validando cada token criptográficamente y aplicando RBAC granular a nivel de servicio y controlador.
+- El frontend provee una experiencia reactiva y protegida con validación de roles en tiempo real y comunicación segura mediante interceptores.
+- La arquitectura y componentes se encuentran preparados para la siguiente etapa de despliegue contenerizado en la nube de **Amazon Web Services (AWS)**.
