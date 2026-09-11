@@ -22,10 +22,8 @@ export class App implements OnInit, OnDestroy {
   isAuthenticating = false;
   authError = '';
   httpAuthError = '';
-  isDemoMode = environment.demoMode;
 
   hasAdminRole(): boolean {
-    if (this.isDemoMode) return true;
     if (this.backendUser?.roles?.includes('ADMIN') || this.backendUser?.roles?.includes('ROLE_ADMIN')) return true;
     const account = this.msalService.instance.getActiveAccount();
     const claims = account?.idTokenClaims as any;
@@ -60,22 +58,6 @@ export class App implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    if (environment.demoMode) {
-      this.msalInitialized = true;
-      this.isLoggedIn = true;
-      this.userName = 'Angel Demo';
-      this.backendUser = {
-        authenticated: true,
-        user: 'demo@pedidos360.local',
-        name: 'Angel Demo',
-        roles: ['ADMIN'],
-      };
-      if (typeof window !== 'undefined' && (window.location.pathname === '/' || window.location.pathname === '')) {
-        this.router.navigate(['/portal']);
-      }
-      return;
-    }
-
     this.msalBroadcastService.inProgress$
       .pipe(
         takeUntil(this._destroying$)
@@ -130,10 +112,6 @@ export class App implements OnInit, OnDestroy {
   }
 
   login(): void {
-    if (environment.demoMode) {
-      return;
-    }
-
     if (this.isAuthenticating) {
       return;
     }
@@ -225,13 +203,6 @@ export class App implements OnInit, OnDestroy {
   }
 
   logout(): void {
-    if (environment.demoMode) {
-      this.isLoggedIn = false;
-      this.userName = '';
-      this.backendUser = null;
-      return;
-    }
-
     this.isAuthenticating = false;
     this.backendUser = null;
     this.isLoggedIn = false;

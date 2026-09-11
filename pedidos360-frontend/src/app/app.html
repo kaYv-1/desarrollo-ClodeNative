@@ -1,7 +1,6 @@
 <header class="app-header">
   <div class="brand">
     <h2>📦 Pedidos360</h2>
-    <span *ngIf="isDemoMode" class="badge-demo">MODO DEMO</span>
   </div>
 
   <nav *ngIf="isLoggedIn" class="nav-menu">
@@ -14,7 +13,6 @@
       <button type="button" class="btn btn-primary" [disabled]="isAuthenticating" (click)="login()">
         {{ isAuthenticating ? 'Conectando...' : 'Iniciar Sesión Azure AD' }}
       </button>
-      <a *ngIf="!isDemoMode" href="/?demo=true" class="btn btn-secondary">Modo Demo</a>
     </div>
 
     <div *ngIf="isLoggedIn" class="user-details">
@@ -36,14 +34,11 @@
   <div class="hero-card">
     <h3>Bienvenido a Pedidos360 Cloud Native</h3>
     <p>Plataforma de comercio electrónico con autenticación empresarial Microsoft Entra ID (Azure AD), microservicios en Spring Boot y despliegue en AWS.</p>
-    <div class="hero-buttons">
-      <button type="button" class="btn btn-lg btn-primary" [disabled]="isAuthenticating" (click)="login()">
-        🔑 Iniciar Sesión con Microsoft
-      </button>
-      <a *ngIf="!isDemoMode" href="/?demo=true" class="btn btn-lg btn-secondary">
-        ⚡ Entrar en Modo Demo Local
-      </a>
-    </div>
+      <div class="hero-buttons">
+        <button type="button" class="btn btn-lg btn-primary" [disabled]="isAuthenticating" (click)="login()">
+          🔑 Iniciar Sesión con Microsoft
+        </button>
+      </div>
   </div>
 </div>
 

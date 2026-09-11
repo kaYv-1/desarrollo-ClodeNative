@@ -22,15 +22,6 @@
   color: #f8fafc;
 }
 
-.badge-demo {
-  background: #f59e0b;
-  color: #78350f;
-  font-size: 0.7rem;
-  font-weight: 800;
-  padding: 0.2rem 0.6rem;
-  border-radius: 9999px;
-  letter-spacing: 0.05em;
-}
 
 .nav-menu {
   display: flex;
