@@ -1,0 +1,11 @@
+$kind: collection
+description: Colección de peticiones para pruebas de integración backend, validación JWT y control de acceso RBAC.
+variables:
+  baseUrl: http://localhost:8080
+  token: ""
+auth:
+  - id: 521b1937-b2aa-49d3-b0b4-7112a74af9d9
+    type: bearer
+    name: bearer auth
+    credentials:
+      token: "{{token}}"

@@ -1,0 +1,8 @@
+$kind: http-request
+name: 09 - Cambiar Estado Orden (PUT /api/ordenes/:id/estado) [Solo ADMIN]
+description: Transición de estado de orden (PENDIENTE -> PROCESADO -> COMPLETADO -> CANCELADO). Solo ADMIN.
+url: "{{baseUrl}}/api/ordenes/1/estado?nuevoEstado=PROCESADO"
+method: PUT
+queryParams:
+  nuevoEstado: PROCESADO
+order: 9000

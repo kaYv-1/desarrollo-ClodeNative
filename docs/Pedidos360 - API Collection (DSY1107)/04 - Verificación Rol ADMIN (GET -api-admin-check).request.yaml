@@ -1,0 +1,6 @@
+$kind: http-request
+name: 04 - Verificación Rol ADMIN (GET /api/admin-check)
+description: Requiere ROLE_ADMIN. Si el token es de un CLIENTE, debe responder 403 Forbidden. Si es ADMIN, responde 200 OK.
+url: "{{baseUrl}}/api/admin-check"
+method: GET
+order: 4000

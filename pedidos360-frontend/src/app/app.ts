@@ -1,12 +1,12 @@
 import { Component, HostListener, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { MsalService, MsalBroadcastService } from '@azure/msal-angular';
 import { InteractionStatus } from '@azure/msal-browser';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { environment } from '../environments/environment';
+import { ApiService, PerfilAutenticado } from './services/api.service';
 
 @Component({
   selector: 'app-root',
@@ -20,7 +20,7 @@ export class App implements OnInit, OnDestroy {
   userName = '';
   userEmail = '';
   userRole: 'ADMIN' | 'CLIENTE' | null = null;
-  backendUser: any = null;
+  backendUser: PerfilAutenticado | null = null;
   isAuthenticating = false;
   authError = '';
   httpAuthError = '';
@@ -42,7 +42,7 @@ export class App implements OnInit, OnDestroy {
   private msalService = inject(MsalService);
   private msalBroadcastService = inject(MsalBroadcastService);
   private router = inject(Router);
-  private readonly http = inject(HttpClient);
+  private readonly apiService = inject(ApiService);
   private readonly _destroying$ = new Subject<void>();
   private msalInitialized = false;
 
@@ -97,26 +97,14 @@ export class App implements OnInit, OnDestroy {
       this.isLoggedIn = true;
       this.userName = activeAccount.name || activeAccount.username || '';
       this.userEmail = activeAccount.username || '';
-
-      // Extract roles from JWT claims (assigned in Azure AD App Roles)
-      const claims = activeAccount.idTokenClaims as any;
-      const roles: string[] = claims?.roles ?? [];
-
-      if (roles.some(r => r.toUpperCase() === 'ADMIN')) {
-        this.userRole = 'ADMIN';
-      } else if (roles.some(r => r.toUpperCase() === 'CLIENTE')) {
-        this.userRole = 'CLIENTE';
-      } else {
-        this.userRole = null;
-      }
-
-      this.noRoleError = this.userRole === null;
-      this.navigateByRole();
+      this.userRole = null;
+      this.noRoleError = false;
     } else if (this.msalInitialized) {
       this.isLoggedIn = false;
       this.userName = '';
       this.userEmail = '';
       this.userRole = null;
+      this.backendUser = null;
       this.noRoleError = false;
     }
   }
@@ -211,11 +199,20 @@ export class App implements OnInit, OnDestroy {
   }
 
   private fetchUserFromBackend(): void {
-    this.http.get(`${environment.azure.apiEndpoint}/api/me`).subscribe({
-      next: (user) => { this.backendUser = user; },
+    this.apiService.obtenerPerfilAutenticado().subscribe({
+      next: (profile) => {
+        this.backendUser = profile;
+        const roles = (profile.roles ?? []).map(role => role.toUpperCase());
+        this.userRole = roles.find(
+          (role): role is 'ADMIN' | 'CLIENTE' => role === 'ADMIN' || role === 'CLIENTE'
+        ) ?? null;
+        this.noRoleError = this.isLoggedIn && this.userRole === null;
+        this.navigateByRole();
+      },
       error: (err) => {
         console.error('Error al consultar el backend protegido:', err);
         this.backendUser = null;
+        this.userRole = null;
       }
     });
   }

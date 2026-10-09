@@ -1,0 +1,7 @@
+$kind: http-request
+description: "Prueba de rechazo: Acceso a endpoint protegido sin cabecera Authorization. Debe retornar 401 Unauthorized."
+url: "{{baseUrl}}/api/me"
+method: GET
+auth:
+  type: noauth
+order: 2000

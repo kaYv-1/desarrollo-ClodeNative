@@ -10,7 +10,7 @@ export const environment = {
     redirectUri: currentOrigin,
     postLogoutRedirectUri: currentOrigin,
     apiScope,
-    apiEndpoint: 'http://localhost:8080',
+    apiEndpoint: '',
     loginScopes: ['openid', 'profile', 'email', apiScope],
     apiScopes: [apiScope],
   },

@@ -1,0 +1,25 @@
+$kind: http-request
+name: 07 - Crear Orden Checkout (POST /api/ordenes)
+description: Crea una orden descontando inventario del producto y vinculando automáticamente al cliente autenticado.
+url: "{{baseUrl}}/api/ordenes"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "estado": "PENDIENTE",
+      "total": 1200000,
+      "detalles": [
+        {
+          "producto": {
+            "id": 1
+          },
+          "cantidad": 1,
+          "precioUnitario": 1200000,
+          "subtotal": 1200000
+        }
+      ]
+    }
+order: 7000

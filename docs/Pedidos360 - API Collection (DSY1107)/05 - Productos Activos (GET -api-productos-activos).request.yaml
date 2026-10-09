@@ -1,0 +1,6 @@
+$kind: http-request
+name: 05 - Productos Activos (GET /api/productos/activos)
+description: Catálogo disponible para CLIENTE y ADMIN.
+url: "{{baseUrl}}/api/productos/activos"
+method: GET
+order: 5000

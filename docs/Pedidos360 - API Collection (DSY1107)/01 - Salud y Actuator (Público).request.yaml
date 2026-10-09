@@ -1,0 +1,7 @@
+$kind: http-request
+description: Endpoint público sin autenticación. Debe responder 200 OK con {"status":"UP"}.
+url: "{{baseUrl}}/actuator/health"
+method: GET
+auth:
+  type: noauth
+order: 1000

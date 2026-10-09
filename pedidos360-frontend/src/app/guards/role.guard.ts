@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { CanActivate, ActivatedRouteSnapshot, RouterStateSnapshot, Router } from '@angular/router';
-import { MsalService } from '@azure/msal-angular';
-import { Observable, of } from 'rxjs';
+import { Observable, catchError, map, of } from 'rxjs';
+import { ApiService } from '../services/api.service';
 
 @Injectable({
   providedIn: 'root'
@@ -9,7 +9,7 @@ import { Observable, of } from 'rxjs';
 export class RoleGuard implements CanActivate {
 
   constructor(
-    private msalService: MsalService,
+    private apiService: ApiService,
     private router: Router
   ) {}
 
@@ -18,38 +18,26 @@ export class RoleGuard implements CanActivate {
     state: RouterStateSnapshot
   ): Observable<boolean> {
     const requiredRoles = route.data['roles'] as string[];
-    return this.checkUserRoles(requiredRoles, state);
-  }
-
-  private checkUserRoles(requiredRoles: string[], state?: RouterStateSnapshot): Observable<boolean> {
-    const currentAccount = this.msalService.instance.getActiveAccount();
-
-    if (!currentAccount) {
-      if (state && state.url !== '/' && state.url !== '') {
-        this.router.navigate(['/']);
-      }
-      return of(false);
-    }
-
     if (!requiredRoles || requiredRoles.length === 0) {
       return of(true);
     }
 
-    // Extract roles from JWT claims (Azure JWT)
-    const idTokenClaims = currentAccount.idTokenClaims as any;
-    const roles = (idTokenClaims?.roles || []) as string[];
+    return this.apiService.obtenerPerfilAutenticado().pipe(
+      map(profile => {
+        const hasRequiredRole = requiredRoles.some(requiredRole =>
+          profile.roles.some(role => role.toUpperCase() === requiredRole.toUpperCase())
+        );
 
-    const hasRequiredRole = requiredRoles.some(requiredRole =>
-      roles.some(role => role.toUpperCase() === requiredRole.toUpperCase())
+        if (!hasRequiredRole) {
+          this.router.navigate(['/403']);
+        }
+        return hasRequiredRole;
+      }),
+      catchError(error => {
+        console.error('No se pudieron verificar los roles del Access Token:', error);
+        this.router.navigate(['/']);
+        return of(false);
+      })
     );
-
-    if (!hasRequiredRole) {
-      if (state?.url !== '/403') {
-        this.router.navigate(['/403']);
-      }
-      return of(false);
-    }
-
-    return of(true);
   }
 }

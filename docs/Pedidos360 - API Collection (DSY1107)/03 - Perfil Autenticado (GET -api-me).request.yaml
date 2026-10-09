@@ -1,0 +1,6 @@
+$kind: http-request
+name: 03 - Perfil Autenticado (GET /api/me)
+description: Retorna la identidad y los roles del usuario extraídos desde los claims del JWT.
+url: "{{baseUrl}}/api/me"
+method: GET
+order: 3000

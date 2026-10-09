@@ -56,8 +56,8 @@ La solución adopta un patrón cliente-servidor distribuido preparado para despl
 
 ### 2.1 Flujo de Autenticación y Autorización
 1. **Inicio de Sesión:** El usuario interactúa con la aplicación Angular, la cual inicia el flujo de inicio de sesión mediante redirección con `@azure/msal-browser` y `@azure/msal-angular`.
-2. **Emisión de Credenciales:** Microsoft Entra ID autentica las credenciales corporativas y emite un `idToken` y un `accessToken` firmado que incluye los claims de identidad (`preferred_username`, `name`) y los roles asignados (`roles: ["ADMIN"]` o `roles: ["CLIENTE"]`).
-3. **Inyección en Peticiones:** El interceptor de Angular (`msalInterceptorFn`) intercepta automáticamente las peticiones dirigidas al backend e inyecta la cabecera estándar `Authorization: Bearer <token>`.
+2. **Emisión de Credenciales:** Microsoft Entra ID emite un `idToken` para identificar al usuario en la interfaz y un `accessToken` para autorizar llamadas a la API. La interfaz obtiene nombre/correo desde la cuenta de MSAL (ID Token); los roles/scopes usados para autorización pertenecen al Access Token de la API.
+3. **Inyección en Peticiones:** El interceptor de Angular (`msalInterceptorFn`) intercepta automáticamente las peticiones dirigidas al endpoint configurado de la API e inyecta la cabecera estándar `Authorization: Bearer <access_token>`.
 4. **Validación en Backend:** Spring Security actúa como **OAuth2 Resource Server**. Valida la firma del token contra las claves públicas JWKS de Microsoft, corrobora el emisor (`issuer-uri`) y la audiencia (`audiences`), mapeando los roles del JWT a autoridades Spring (`ROLE_ADMIN`, `ROLE_CLIENTE`).
 5. **Control de Acceso (RBAC):** Cada endpoint REST evalúa las autoridades requeridas mediante la anotación `@PreAuthorize`.
 
@@ -68,11 +68,11 @@ La solución adopta un patrón cliente-servidor distribuido preparado para despl
 ### 3.1 Frontend (Angular 22)
 - **Control de Rutas y Seguridad:**
   - `MsalGuard`: Restringe el acceso a usuarios no autenticados, redirigiendo a Microsoft Entra ID.
-  - `RoleGuard`: Lee los roles asignados en el token JWT y restringe rutas específicas:
+  - `RoleGuard`: consulta `GET /api/me`, cuyo backend devuelve los roles del Access Token validado, y restringe rutas específicas:
     - `/portal`: Reservado para usuarios con rol `CLIENTE`.
     - `/admin`: Reservado para usuarios con rol `ADMIN`.
     - `/403`: Vista informativa de acceso denegado.
-  - Detección automática del rol tras el inicio de sesión y redirección sin bucles.
+  - El ID Token se usa solo para identidad visual; la API `/api/me` determina el rol desde el Access Token y permite la redirección por rol.
 - **Portal de Clientes (`ClientePortalComponent`):**
   - **Catálogo Interactivo:** Listado de productos activos, visualización de precio, descripción y control visual de stock con botón de actualización inmediata (`🔄 Refrescar Catálogo`).
   - **Carrito de Compras:** Agregado dinámico, modificación de cantidades respetando el límite de inventario y cálculo de subtotales/totales.
@@ -85,7 +85,7 @@ La solución adopta un patrón cliente-servidor distribuido preparado para despl
   - Supervisión de Órdenes globales y cambio de estado transaccional.
   - Pestañas reactivas y botones de actualización manual por sección.
 
-### 3.2 Backend (Java 17 & Spring Boot 3.5)
+### 3.2 Backend (Java 25 LTS & Spring Boot 3.5)
 - **Configuración de Seguridad (`SecurityConfig`):**
   - Configuración de CORS para orígenes autorizados (`localhost:4200`).
   - Deshabilitación de CSRF para API Stateless y habilitación de `@EnableMethodSecurity`.
@@ -108,7 +108,7 @@ La solución adopta un patrón cliente-servidor distribuido preparado para despl
 |:---|:---|:---|:---:|
 | **Frontend** | Aplicación funcional en Angular | Angular 22 modular, compilación limpia con `npm run build`. | **Cumple** |
 | **Frontend** | Login y Logout con MSAL | Implementación en `app.ts` usando `@azure/msal-angular` y `msal-browser`. | **Cumple** |
-| **Frontend** | Protección de rutas (`MsalGuard` / `RoleGuard`) | Rutas `/portal` y `/admin` protegidas en `app.routes.ts` con lectura de roles JWT. | **Cumple** |
+| **Frontend** | Protección de rutas (`MsalGuard` / `RoleGuard`) | Rutas `/portal` y `/admin` protegidas; `RoleGuard` consulta `/api/me` y usa los roles del Access Token validado por backend. | **Cumple** |
 | **Frontend** | Interceptor HTTP e inyección de token | `msalInterceptorFn` inyecta cabecera `Authorization: Bearer <token>` a llamadas backend. | **Cumple** |
 | **Frontend** | Manejo de respuestas 401 y 403 | Interceptor `authErrorInterceptor` captura eventos y muestra alertas descriptivas al usuario. | **Cumple** |
 | **Frontend** | Vistas y experiencia de usuario | Catálogo con stock real, carrito, checkout, órdenes y panel admin con recarga reactiva. | **Cumple** |
@@ -119,14 +119,14 @@ La solución adopta un patrón cliente-servidor distribuido preparado para despl
 | **Backend** | Endpoints de Perfil y Salud | `/api/me` expone el perfil y roles del JWT validado; `/actuator/health` expone estado UP. | **Cumple** |
 | **Backend** | Integridad de Dominio y Transacciones | `OrdenService` valida disponibilidad de stock, resta inventario y calcula totales. | **Cumple** |
 | **Backend** | Control de propiedad de órdenes | Usuarios normales solo acceden a sus órdenes; administradores acceden a la gestión global. | **Cumple** |
-| **Cloud** | Diseño de Arquitectura AWS | Guía técnica y diseño topológico documentado en `docs/deployment-aws.md`. | **Documentado** |
-| **Cloud** | Contenerización Docker | `Dockerfile` multi-stage optimizado para despliegue en instancias EC2. | **Cumple** |
+| **Cloud** | Diseño de Arquitectura AWS | Arquitectura objetivo descrita en este README; la infraestructura no está desplegada ni hay IaC en este repositorio. | **Diseño, pendiente despliegue** |
+| **Cloud** | Consumo de API Gateway desde frontend | El endpoint de API se configura en `pedidos360-frontend/public/runtime-config.json`; se debe reemplazar por la URL del API Gateway desplegado. | **Configuración lista, endpoint real pendiente** |
 
 ---
 
-## 5. Diseño para Despliegue en AWS (Cloud Native)
+## 5. Arquitectura Objetivo para AWS (Cloud Native)
 
-La infraestructura cloud proyectada para producción sigue las mejores prácticas de AWS:
+La siguiente es la arquitectura proyectada, no una infraestructura ya desplegada:
 
 ```text
 [Internet]
@@ -144,7 +144,7 @@ La infraestructura cloud proyectada para producción sigue las mejores práctica
     |
     v (Puerto 8080)
 [Amazon EC2 (Auto Scaling Group)]
-    * Contenedor Docker de pedidos360-backend (Java 17)
+    * Contenedor Docker de pedidos360-backend (Java 25 LTS)
     * Security Group restringido: solo acepta tráfico del NLB
     |
     v
@@ -152,12 +152,26 @@ La infraestructura cloud proyectada para producción sigue las mejores práctica
     * Subnets privadas sin acceso directo a Internet
 ```
 
+### 5.1 Activación de la integración real con API Gateway
+
+El repositorio permite configurar el frontend para consumir el endpoint desplegado sin recompilar Angular:
+
+1. Despliegue el backend en EC2 y configure el API Gateway HTTP API con una integración VPC Link hacia el NLB privado. Exponga las rutas `/api/{proxy+}` y `/actuator/health` según las necesidades de operación.
+2. Configure un JWT authorizer de API Gateway con issuer `https://login.microsoftonline.com/<TENANT_ID>/v2.0` y audience `api://<API_CLIENT_ID>` (o el audience que acepte el backend). Añada el scope `access_as_user` a las rutas protegidas. El backend conserva su propia validación de firma, issuer, audience y roles.
+3. Sustituya `apiEndpoint` en `pedidos360-frontend/public/runtime-config.json` por la URL base HTTPS del API Gateway. El endpoint debe incluir un stage si la URL pública lo requiere y no debe terminar en `/`. Publique nuevamente el archivo estático y purgue la caché de CloudFront/CDN para que navegador y CDN no mantengan la URL anterior.
+4. Configure `CORS_ALLOWED_ORIGINS` en el backend con el origen exacto del frontend desplegado (por ejemplo, `https://pedidos360.example.com`). Configure también CORS en API Gateway para permitir ese origen, los métodos usados (`GET`, `POST`, `PUT`, `DELETE`, `OPTIONS`) y las cabeceras `Authorization` y `Content-Type`.
+5. Registre en Microsoft Entra ID la URL HTTPS del frontend como redirect URI tipo SPA. Luego inicie sesión y compruebe en las herramientas del navegador que las llamadas a `/api/me` y a los recursos salen al dominio de API Gateway y llevan un Access Token; verifique además respuestas 200, 401 y 403 según usuario/rol.
+
+**Estado actual:** esta configuración de código está preparada, pero no se puede demostrar una llamada real al API Gateway hasta disponer de su URL y desplegar/configurar los recursos AWS. No se incluyen credenciales, URL inventada ni recursos de infraestructura en este repositorio.
+
 ---
 
 ## 6. Guía de Ejecución Local
 
+En desarrollo, `runtime-config.json` apunta a `http://localhost:8080`. Para cualquier otro entorno, actualice el valor `apiEndpoint` en ese archivo con la URL base del API; la aplicación lo carga antes de inicializar MSAL y el cliente HTTP.
+
 ### 6.1 Requisitos del Sistema
-- **Java Development Kit (JDK):** Versión 17 LTS o superior instalada y configurada en el `PATH`.
+- **Java Development Kit (JDK):** Versión 25 LTS instalada y configurada en el `PATH`.
 - **Apache Maven:** Versión 3.9 o superior.
 - **Node.js:** Versión 20 LTS o superior y gestor de paquetes `npm`.
 - **Navegador Web:** Con soporte para ventanas emergentes o redirecciones.

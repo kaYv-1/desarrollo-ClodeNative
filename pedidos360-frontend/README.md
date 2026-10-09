@@ -36,6 +36,12 @@ ng build
 
 This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
 
+## API endpoint configuration
+
+The frontend loads `public/runtime-config.json` before starting Angular and MSAL. Set its `apiEndpoint` to the backend URL for local development or to the HTTPS AWS API Gateway URL for a deployed environment. The endpoint is used both for API calls and for MSAL's protected-resource map.
+
+The signed-in user's name and email come from the MSAL account (ID Token). Route roles come from the protected backend's `/api/me` response, derived from the API Access Token; frontend guards only improve navigation and do not replace backend authorization.
+
 ## Running unit tests
 
 To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:

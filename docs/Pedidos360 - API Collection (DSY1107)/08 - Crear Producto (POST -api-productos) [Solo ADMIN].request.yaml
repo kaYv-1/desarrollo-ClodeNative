@@ -1,0 +1,18 @@
+$kind: http-request
+name: 08 - Crear Producto (POST /api/productos) [Solo ADMIN]
+description: Creación de productos reservada exclusivamente para el rol ADMIN.
+url: "{{baseUrl}}/api/productos"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "nombre": "Tablet Pro 11",
+      "descripcion": "Pantalla OLED 120Hz 256GB",
+      "precio": 650000,
+      "stock": 15,
+      "activo": true
+    }
+order: 8000

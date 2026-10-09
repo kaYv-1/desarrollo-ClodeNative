@@ -43,6 +43,14 @@ export interface DetallePedido {
   subtotal: number;
 }
 
+export interface PerfilAutenticado {
+  authenticated: boolean;
+  user: string;
+  preferred_username: string;
+  name: string;
+  roles: string[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -51,6 +59,10 @@ export class ApiService {
   private apiUrl = environment.azure.apiEndpoint;
 
   constructor(private http: HttpClient) {}
+
+  obtenerPerfilAutenticado(): Observable<PerfilAutenticado> {
+    return this.http.get<PerfilAutenticado>(`${this.apiUrl}/api/me`);
+  }
 
   // Cliente endpoints
   crearCliente(cliente: Cliente): Observable<Cliente> {

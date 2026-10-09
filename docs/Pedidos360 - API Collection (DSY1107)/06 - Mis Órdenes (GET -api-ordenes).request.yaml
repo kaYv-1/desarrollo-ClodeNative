@@ -1,0 +1,6 @@
+$kind: http-request
+name: 06 - Mis Órdenes (GET /api/ordenes)
+description: Si el usuario es CLIENTE, retorna solo las órdenes de su propiedad asociadas al email del JWT. Si es ADMIN, retorna todas las órdenes.
+url: "{{baseUrl}}/api/ordenes"
+method: GET
+order: 6000
