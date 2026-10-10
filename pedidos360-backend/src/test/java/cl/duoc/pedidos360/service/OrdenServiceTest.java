@@ -3,6 +3,7 @@ package cl.duoc.pedidos360.service;
 import cl.duoc.pedidos360.model.DetallePedido;
 import cl.duoc.pedidos360.model.Orden;
 import cl.duoc.pedidos360.model.Producto;
+import cl.duoc.pedidos360.messaging.OrderEventPublisher;
 import cl.duoc.pedidos360.repository.DetallePedidoRepository;
 import cl.duoc.pedidos360.repository.OrdenRepository;
 import cl.duoc.pedidos360.repository.ProductoRepository;
@@ -31,6 +32,9 @@ class OrdenServiceTest {
 
     @Mock
     private ProductoRepository productoRepository;
+
+    @Mock
+    private OrderEventPublisher orderEventPublisher;
 
     @InjectMocks
     private OrdenService ordenService;

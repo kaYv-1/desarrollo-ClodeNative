@@ -9,6 +9,7 @@ import cl.duoc.pedidos360.repository.ClienteRepository;
 import cl.duoc.pedidos360.repository.OrdenRepository;
 import cl.duoc.pedidos360.repository.DetallePedidoRepository;
 import cl.duoc.pedidos360.repository.ProductoRepository;
+import cl.duoc.pedidos360.messaging.OrderEventPublisher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ public class OrdenService {
     private final DetallePedidoRepository detallePedidoRepository;
     private final ProductoRepository productoRepository;
     private final ClienteRepository clienteRepository;
+    private final OrderEventPublisher orderEventPublisher;
 
     @Transactional
     public Orden crearOrdenParaUsuario(Orden orden, String userEmail, String userName) {
@@ -57,7 +59,9 @@ public class OrdenService {
         orden.setEstado(EstadoOrden.PENDIENTE);
         prepararDetalles(orden);
         calcularTotalOrden(orden);
-        return ordenRepository.save(orden);
+        Orden savedOrder = ordenRepository.save(orden);
+        orderEventPublisher.publishCreated(savedOrder);
+        return savedOrder;
     }
 
     public Optional<Orden> obtenerOrdenPorId(Long id) {

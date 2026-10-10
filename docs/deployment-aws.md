@@ -83,3 +83,30 @@ El frontend debe cambiar `apiEndpoint` desde `http://localhost:8080` a la URL p�
 - Dockerfile: agregado al repositorio.
 - Guía de arquitectura y despliegue: documentada.
 - Cuenta AWS, EC2, API Gateway, VPC Link, balanceador y RDS: requieren provisionamiento real.
+
+## 6. RabbitMQ local y productivo
+
+El backend declara de forma centralizada el exchange `pedidos360.orders`, la cola
+`pedidos360.order-notifications`, el exchange de errores `pedidos360.dead-letter` y
+la DLQ `pedidos360.order-notifications.dlq`. Al crear una orden se publica el evento
+`order.created`; el consumidor confirma con ACK y envía mensajes con errores a la DLQ
+mediante NACK sin reencolarlos.
+
+Para levantar un broker local:
+
+```powershell
+cd pedidos360-backend
+docker compose -f docker-compose.rabbitmq.yml up -d
+```
+
+La consola de administración queda disponible en `http://localhost:15672` con
+`guest`/`guest`. En producción, configure `RABBITMQ_HOST`, `RABBITMQ_PORT`,
+`RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD` y las variables `RABBITMQ_*` de nombres.
+
+El microservicio administrador expone estas operaciones para usuarios `ADMIN`:
+
+- `POST/DELETE /api/admin/rabbitmq/queues`
+- `POST/DELETE /api/admin/rabbitmq/exchanges`
+- `POST/DELETE /api/admin/rabbitmq/bindings`
+
+Los endpoints reciben DTO validados y delegan la operación en `RabbitAdminService`.
