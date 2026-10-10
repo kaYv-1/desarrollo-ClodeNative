@@ -62,7 +62,7 @@ public class RabbitAdminController {
 
     public record ExchangeRequest(
         @NotBlank String name,
-        @Pattern(regexp = "(?i)direct|topic", message = "type debe ser direct o topic") String type,
+        @NotBlank @Pattern(regexp = "(?i)direct|topic", message = "type debe ser direct o topic") String type,
         boolean durable) { }
 
     public record BindingRequest(

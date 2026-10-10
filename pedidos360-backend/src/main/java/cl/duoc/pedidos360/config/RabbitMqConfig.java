@@ -5,6 +5,8 @@ import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.TopicExchange;
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,6 +18,11 @@ import java.util.Map;
 public class RabbitMqConfig {
 
     public static final String DEAD_LETTER_ROUTING_KEY = "order.notifications.dlq";
+
+    @Bean
+    MessageConverter rabbitMessageConverter() {
+        return new Jackson2JsonMessageConverter();
+    }
 
     @Bean
     TopicExchange ordersExchange(RabbitMqProperties properties) {
