@@ -238,3 +238,40 @@ La solución **Pedidos360** cumple a cabalidad con todos los lineamientos técni
 - El backend actúa de forma estrictamente desacoplada como **Resource Server**, validando cada token criptográficamente y aplicando RBAC granular a nivel de servicio y controlador.
 - El frontend provee una experiencia reactiva y protegida con validación de roles en tiempo real y comunicación segura mediante interceptores.
 - La arquitectura y componentes se encuentran preparados para la siguiente etapa de despliegue contenerizado en la nube de **Amazon Web Services (AWS)**.
+
+## 8. Mensajería asíncrona con RabbitMQ
+
+El backend publica un evento `OrdenCreadaEvent` después de confirmar la transacción de creación de una orden. El exchange directo `pedidos360.orders` lo enruta hacia la cola durable `pedidos360.orders.notifications`, donde `OrdenNotificacionConsumer` procesa la solicitud de notificación y confirma el mensaje con ACK manual. Si el procesamiento falla, el consumidor registra el error y envía NACK sin reencolar; RabbitMQ enruta el mensaje a `pedidos360.orders.notifications.dlq` mediante el exchange `pedidos360.dead-letter`.
+
+Los nombres y claves de enrutamiento de la topología declarada por Spring están centralizados en los archivos `application.properties` de ambos servicios. El microservicio independiente `pedidos360-rabbitmq-admin` permite crear y eliminar colas, exchanges (`DIRECT`, `FANOUT`, `TOPIC`) y bindings desde endpoints protegidos por el rol `ADMIN`. Su URL base local es `http://localhost:8081`:
+
+| Método | Ruta | Acción |
+|---|---|---|
+| `POST` | `/api/admin/rabbitmq/queues` | Crear cola |
+| `DELETE` | `/api/admin/rabbitmq/queues/{name}` | Eliminar cola |
+| `POST` | `/api/admin/rabbitmq/exchanges` | Crear exchange |
+| `DELETE` | `/api/admin/rabbitmq/exchanges/{name}` | Eliminar exchange |
+| `POST` | `/api/admin/rabbitmq/bindings` | Crear binding |
+| `DELETE` | `/api/admin/rabbitmq/bindings?queueName={queue}&exchangeName={exchange}&routingKey={key}` | Eliminar binding |
+
+Ejemplos de payload:
+
+```json
+{"name":"reportes.listos"}
+```
+
+```json
+{"name":"reportes","type":"DIRECT"}
+```
+
+```json
+{"queueName":"reportes.listos","exchangeName":"reportes","routingKey":"reportes.ready"}
+```
+
+Las operaciones de administración validan los nombres, y no permiten modificar o eliminar la topología interna de órdenes. Para levantar un broker local de desarrollo:
+
+```powershell
+docker compose up --build -d rabbitmq rabbitmq-admin
+```
+
+El backend de órdenes se inicia por separado desde `pedidos360-backend` con `mvn spring-boot:run`; así se conecta al broker publicado en `localhost:5672`. La consola local de RabbitMQ queda disponible en `http://localhost:15672` con el usuario `pedidos360` y la contraseña `pedidos360-local`. Estas credenciales son solo para desarrollo local; en otros entornos deben configurarse `RABBITMQ_HOST`, `RABBITMQ_PORT`, `RABBITMQ_USERNAME` y `RABBITMQ_PASSWORD` mediante secretos.
