@@ -1,0 +1,6 @@
+$kind: http-request
+name: 13 - Eliminar Exchange RabbitMQ (DELETE /api/admin/rabbitmq/exchanges/{name}) [Solo ADMIN]
+description: "Elimina un exchange existente en RabbitMQ por nombre. Requiere rol ADMIN."
+url: "{{baseUrl}}/api/admin/rabbitmq/exchanges/pedidos360.custom-topic"
+method: DELETE
+order: 13000

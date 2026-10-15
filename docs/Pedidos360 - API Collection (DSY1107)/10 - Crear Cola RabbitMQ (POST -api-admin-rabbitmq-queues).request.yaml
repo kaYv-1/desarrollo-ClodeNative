@@ -1,0 +1,15 @@
+$kind: http-request
+name: 10 - Crear Cola RabbitMQ (POST /api/admin/rabbitmq/queues) [Solo ADMIN]
+description: "Crea una nueva cola en RabbitMQ con soporte de durabilidad. Requiere rol ADMIN."
+url: "{{baseUrl}}/api/admin/rabbitmq/queues"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "name": "pedidos360.custom-audit-queue",
+      "durable": true
+    }
+order: 10000

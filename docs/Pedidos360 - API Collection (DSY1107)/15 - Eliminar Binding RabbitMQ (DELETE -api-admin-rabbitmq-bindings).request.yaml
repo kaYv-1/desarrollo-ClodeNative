@@ -1,0 +1,16 @@
+$kind: http-request
+name: 15 - Eliminar Binding RabbitMQ (DELETE /api/admin/rabbitmq/bindings) [Solo ADMIN]
+description: "Elimina un binding entre cola y exchange. Requiere rol ADMIN."
+url: "{{baseUrl}}/api/admin/rabbitmq/bindings"
+method: DELETE
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "queue": "pedidos360.custom-audit-queue",
+      "exchange": "pedidos360.custom-topic",
+      "routingKey": "audit.*"
+    }
+order: 15000

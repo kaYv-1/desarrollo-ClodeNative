@@ -1,0 +1,6 @@
+$kind: http-request
+name: 11 - Eliminar Cola RabbitMQ (DELETE /api/admin/rabbitmq/queues/{name}) [Solo ADMIN]
+description: "Elimina una cola existente en RabbitMQ por nombre. Requiere rol ADMIN."
+url: "{{baseUrl}}/api/admin/rabbitmq/queues/pedidos360.custom-audit-queue"
+method: DELETE
+order: 11000

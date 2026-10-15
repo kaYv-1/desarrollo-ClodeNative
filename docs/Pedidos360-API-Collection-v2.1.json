@@ -1,0 +1,181 @@
+{
+  "info": {
+    "_postman_id": "pedidos360-ep3-collection",
+    "name": "Pedidos360 - Evaluación Parcial N° 3 (DSY1107)",
+    "description": "Colección completa para pruebas de API REST, Seguridad JWT/OAuth2 y Administración de RabbitMQ (Exchanges, Queues, Bindings y DLQ).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{bearerToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "01 - Salud y Actuator (Público)",
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/actuator/health", "host": ["{{baseUrl}}"], "path": ["actuator", "health"] }
+      }
+    },
+    {
+      "name": "02 - Prueba 401 Unauthorized (Sin Token)",
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/me", "host": ["{{baseUrl}}"], "path": ["api", "me"] }
+      }
+    },
+    {
+      "name": "03 - Perfil Autenticado (GET /api/me)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/me", "host": ["{{baseUrl}}"], "path": ["api", "me"] }
+      }
+    },
+    {
+      "name": "04 - Verificación Rol ADMIN (GET /api/admin-check)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/admin-check", "host": ["{{baseUrl}}"], "path": ["api", "admin-check"] }
+      }
+    },
+    {
+      "name": "05 - Productos Activos (GET /api/productos/activos)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/productos/activos", "host": ["{{baseUrl}}"], "path": ["api", "productos", "activos"] }
+      }
+    },
+    {
+      "name": "06 - Mis Órdenes (GET /api/ordenes)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/ordenes", "host": ["{{baseUrl}}"], "path": ["api", "ordenes"] }
+      }
+    },
+    {
+      "name": "07 - Crear Orden Checkout (POST /api/ordenes)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"detalles\": [\n    {\n      \"producto\": { \"id\": 1 },\n      \"cantidad\": 2\n    }\n  ]\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/ordenes", "host": ["{{baseUrl}}"], "path": ["api", "ordenes"] }
+      }
+    },
+    {
+      "name": "08 - Crear Producto (POST /api/productos) [Solo ADMIN]",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Tablet Pro 11\",\n  \"descripcion\": \"Pantalla OLED 120Hz 256GB\",\n  \"precio\": 650000,\n  \"stock\": 15,\n  \"activo\": true\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/productos", "host": ["{{baseUrl}}"], "path": ["api", "productos"] }
+      }
+    },
+    {
+      "name": "09 - Cambiar Estado Orden (PUT /api/ordenes/{id}/estado) [Solo ADMIN]",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/ordenes/1/estado?estado=PROCESADO",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "ordenes", "1", "estado"],
+          "query": [{ "key": "estado", "value": "PROCESADO" }]
+        }
+      }
+    },
+    {
+      "name": "10 - Crear Cola RabbitMQ (POST /api/admin/rabbitmq/queues) [Solo ADMIN]",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"pedidos360.custom-audit-queue\",\n  \"durable\": true\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/admin/rabbitmq/queues", "host": ["{{baseUrl}}"], "path": ["api", "admin", "rabbitmq", "queues"] }
+      }
+    },
+    {
+      "name": "11 - Eliminar Cola RabbitMQ (DELETE /api/admin/rabbitmq/queues/{name}) [Solo ADMIN]",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/admin/rabbitmq/queues/pedidos360.custom-audit-queue", "host": ["{{baseUrl}}"], "path": ["api", "admin", "rabbitmq", "queues", "pedidos360.custom-audit-queue"] }
+      }
+    },
+    {
+      "name": "12 - Crear Exchange RabbitMQ (POST /api/admin/rabbitmq/exchanges) [Solo ADMIN]",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"pedidos360.custom-topic\",\n  \"type\": \"topic\",\n  \"durable\": true\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/admin/rabbitmq/exchanges", "host": ["{{baseUrl}}"], "path": ["api", "admin", "rabbitmq", "exchanges"] }
+      }
+    },
+    {
+      "name": "13 - Eliminar Exchange RabbitMQ (DELETE /api/admin/rabbitmq/exchanges/{name}) [Solo ADMIN]",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/admin/rabbitmq/exchanges/pedidos360.custom-topic", "host": ["{{baseUrl}}"], "path": ["api", "admin", "rabbitmq", "exchanges", "pedidos360.custom-topic"] }
+      }
+    },
+    {
+      "name": "14 - Crear Binding RabbitMQ (POST /api/admin/rabbitmq/bindings) [Solo ADMIN]",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"queue\": \"pedidos360.custom-audit-queue\",\n  \"exchange\": \"pedidos360.custom-topic\",\n  \"routingKey\": \"audit.*\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/admin/rabbitmq/bindings", "host": ["{{baseUrl}}"], "path": ["api", "admin", "rabbitmq", "bindings"] }
+      }
+    },
+    {
+      "name": "15 - Eliminar Binding RabbitMQ (DELETE /api/admin/rabbitmq/bindings) [Solo ADMIN]",
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"queue\": \"pedidos360.custom-audit-queue\",\n  \"exchange\": \"pedidos360.custom-topic\",\n  \"routingKey\": \"audit.*\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/admin/rabbitmq/bindings", "host": ["{{baseUrl}}"], "path": ["api", "admin", "rabbitmq", "bindings"] }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "bearerToken",
+      "value": ""
+    }
+  ]
+}

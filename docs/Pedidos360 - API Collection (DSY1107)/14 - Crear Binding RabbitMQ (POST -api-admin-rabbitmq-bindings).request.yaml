@@ -1,0 +1,16 @@
+$kind: http-request
+name: 14 - Crear Binding RabbitMQ (POST /api/admin/rabbitmq/bindings) [Solo ADMIN]
+description: "Crea un binding entre una cola y un exchange con su routing key. Requiere rol ADMIN."
+url: "{{baseUrl}}/api/admin/rabbitmq/bindings"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "queue": "pedidos360.custom-audit-queue",
+      "exchange": "pedidos360.custom-topic",
+      "routingKey": "audit.*"
+    }
+order: 14000

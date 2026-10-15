@@ -1,0 +1,16 @@
+$kind: http-request
+name: 12 - Crear Exchange RabbitMQ (POST /api/admin/rabbitmq/exchanges) [Solo ADMIN]
+description: "Crea un nuevo Exchange en RabbitMQ (direct o topic) con durabilidad. Requiere rol ADMIN."
+url: "{{baseUrl}}/api/admin/rabbitmq/exchanges"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "name": "pedidos360.custom-topic",
+      "type": "topic",
+      "durable": true
+    }
+order: 12000
