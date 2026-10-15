@@ -169,3 +169,40 @@ npm start
 En la carpeta `docs/` se encuentran disponibles las pruebas listas para ser importadas en Postman:
 * `docs/Pedidos360-API-Collection-v2.1.json`: Colección completa en formato JSON estándar v2.1 (peticiones 01 a 15, incluyendo todos los endpoints de administración de RabbitMQ).
 * `docs/Pedidos360 - API Collection (DSY1107)/`: Definiciones sincronizadas en formato YAML.
+
+---
+
+## 8. Guía de Ejecución Local
+
+1. **Levantar broker RabbitMQ y microservicio RabbitMQ-Admin (Docker):**
+   ```powershell
+   docker compose up --build -d rabbitmq rabbitmq-admin
+   ```
+   * Consola RabbitMQ: `http://localhost:15672` (usuario: `pedidos360`, clave: `pedidos360-local`).
+   * Microservicio Administrador RabbitMQ: `http://localhost:8081`.
+
+2. **Poner en marcha el Backend (`pedidos360-backend`):**
+   ```powershell
+   cd pedidos360-backend
+   mvn spring-boot:run
+   ```
+   * API Base: `http://localhost:8080`
+   * Salud Actuator: `http://localhost:8080/actuator/health`
+
+3. **Poner en marcha el Frontend (`pedidos360-frontend`):**
+   ```powershell
+   cd pedidos360-frontend
+   npm start
+   ```
+   * URL de la aplicación: `http://localhost:4200`
+   * Redirección automática según rol Azure AD: `ADMIN` hacia `/admin` y `CLIENTE` hacia `/portal`.
+
+---
+
+## 9. Conclusiones
+
+La solución **Pedidos360** para la **Evaluación Parcial N.° 3** cumple con la totalidad de los criterios evaluados:
+- **Desacoplamiento asíncrono:** Tareas de notificación y emisión de comprobantes se procesan fuera del hilo de la petición HTTP.
+- **Resiliencia garantizada:** Confirmaciones manuales explícitas (ACK) y gestión de fallos con Dead-Letter Queues (DLQ) sin pérdida de mensajes.
+- **Arquitectura de múltiples microservicios:** Separación entre el servicio de negocio principal (`pedidos360-backend`) y el servicio de gestión de infraestructura de mensajería (`pedidos360-rabbitmq-admin`), ambos securizados con OAuth2 / Microsoft Entra ID.
+- **Frontend SPA reactivo:** Angular con MSAL, guards por rol y navegación adaptativa.

@@ -3,10 +3,10 @@ package cl.duoc.pedidos360.service;
 import cl.duoc.pedidos360.model.DetallePedido;
 import cl.duoc.pedidos360.model.Orden;
 import cl.duoc.pedidos360.model.Producto;
-import cl.duoc.pedidos360.messaging.OrderEventPublisher;
 import cl.duoc.pedidos360.repository.DetallePedidoRepository;
 import cl.duoc.pedidos360.repository.OrdenRepository;
 import cl.duoc.pedidos360.repository.ProductoRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -34,7 +34,7 @@ class OrdenServiceTest {
     private ProductoRepository productoRepository;
 
     @Mock
-    private OrderEventPublisher orderEventPublisher;
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private OrdenService ordenService;
