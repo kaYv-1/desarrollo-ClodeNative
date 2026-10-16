@@ -137,6 +137,32 @@ mvn clean test
 
 ## 6. Puesta en Marcha
 
+### 6.0 CORS y API Gateway
+
+El preflight CORS (`OPTIONS`) debe ser respondido por API Gateway, sin enviarlo
+a la integración privada ni al authorizer JWT. En una HTTP API, configure CORS
+con los orígenes reales (incluido `http://localhost:4200` para desarrollo), los
+métodos `GET,POST,PUT,DELETE,OPTIONS` y los headers
+`authorization,content-type`. Después de guardar el cambio, despliegue la
+etapa de la API si no usa auto-deploy.
+
+Una respuesta `503 Service Unavailable` a `OPTIONS /api/me` indica una ruta o
+integración de API Gateway incorrecta aunque incluya headers CORS; el navegador
+la muestra como un error de CORS. Compruébelo con:
+
+```powershell
+curl.exe -i -X OPTIONS "https://<api-id>.execute-api.<region>.amazonaws.com/api/me" `
+  -H "Origin: http://localhost:4200" `
+  -H "Access-Control-Request-Method: GET" `
+  -H "Access-Control-Request-Headers: authorization"
+```
+
+La respuesta correcta debe ser `2xx` y contener
+`Access-Control-Allow-Origin`, `Access-Control-Allow-Methods` y
+`Access-Control-Allow-Headers`. No cree una integración `OPTIONS` protegida
+con JWT. El backend también permite `OPTIONS` sin autenticación, pero eso no
+puede corregir un `503` generado antes de alcanzar Spring.
+
 ### 6.1 Iniciar RabbitMQ (Docker)
 Si dispones de Docker instalado:
 ```powershell

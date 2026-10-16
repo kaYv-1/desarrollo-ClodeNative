@@ -201,6 +201,7 @@ export class App implements OnInit, OnDestroy {
   private fetchUserFromBackend(): void {
     this.apiService.obtenerPerfilAutenticado().subscribe({
       next: (profile) => {
+        this.httpAuthError = '';
         this.backendUser = profile;
         const roles = (profile.roles ?? []).map(role => role.toUpperCase());
         this.userRole = roles.find(
@@ -209,10 +210,17 @@ export class App implements OnInit, OnDestroy {
         this.noRoleError = this.isLoggedIn && this.userRole === null;
         this.navigateByRole();
       },
-      error: (err) => {
+      error: (err: { status?: number }) => {
         console.error('Error al consultar el backend protegido:', err);
         this.backendUser = null;
         this.userRole = null;
+        if (err?.status === 0) {
+          this.httpAuthError = `No se pudo conectar con el backend (${environment.azure.apiEndpoint}). Verifica que el backend esté ejecutándose en ese puerto o revisa public/runtime-config.json.`;
+        } else if (err?.status === 401 || err?.status === 403) {
+          this.httpAuthError = 'Tu cuenta no tiene autorización en el backend para obtener el perfil (401/403).';
+        } else {
+          this.httpAuthError = `Error al consultar el backend (HTTP ${err?.status ?? 'desconocido'}).`;
+        }
       }
     });
   }
