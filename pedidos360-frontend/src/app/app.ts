@@ -134,6 +134,7 @@ export class App implements OnInit, OnDestroy {
 
     this.msalService.loginRedirect({
       scopes: environment.azure.loginScopes,
+      prompt: 'select_account',
     }).subscribe({
       next: () => undefined,
       error: (err) => {
@@ -225,7 +226,7 @@ export class App implements OnInit, OnDestroy {
     });
   }
 
-  logout(): void {
+  async logout(): Promise<void> {
     this.isAuthenticating = false;
     this.backendUser = null;
     this.isLoggedIn = false;
@@ -233,14 +234,24 @@ export class App implements OnInit, OnDestroy {
     this.userEmail = '';
     this.userRole = null;
     this.authError = '';
+    this.httpAuthError = '';
     this.noRoleError = false;
-    this.msalService.instance.setActiveAccount(null);
 
-    this.msalService.logoutPopup({
-      postLogoutRedirectUri: environment.azure.postLogoutRedirectUri,
-    }).subscribe({
-      error: (err) => console.error('Error en logout popup:', err)
-    });
+    try {
+      this.msalService.instance.setActiveAccount(null);
+      await this.msalService.instance.clearCache();
+    } catch (err) {
+      console.warn('Error al limpiar caché de MSAL:', err);
+    }
+
+    if (typeof window !== 'undefined') {
+      sessionStorage.clear();
+      Object.keys(localStorage)
+        .filter(key => key.startsWith('msal.') || key.includes('login.microsoftonline.com'))
+        .forEach(key => localStorage.removeItem(key));
+    }
+
+    await this.router.navigate(['/']);
   }
 
   ngOnDestroy(): void {
