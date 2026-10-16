@@ -86,22 +86,16 @@ El frontend debe cambiar `apiEndpoint` desde `http://localhost:8080` a la URL p�
 
 ## 6. RabbitMQ local y productivo
 
-El backend declara de forma centralizada el exchange `pedidos360.orders`, la cola
-`pedidos360.order-notifications`, el exchange de errores `pedidos360.dead-letter` y
-la DLQ `pedidos360.order-notifications.dlq`. Al crear una orden se publica el evento
-`order.created`; el consumidor confirma con ACK y envía mensajes con errores a la DLQ
-mediante NACK sin reencolarlos.
-
-Para levantar un broker local:
+El `compose.yaml` de la raíz levanta dos nodos RabbitMQ con descubrimiento clásico de pares, el backend y el servicio administrador. Comprueba la formación del clúster antes de grabar la demostración:
 
 ```powershell
-cd pedidos360-backend
-docker compose -f docker-compose.rabbitmq.yml up -d
+docker compose up --build -d
+docker compose exec rabbitmq1 rabbitmqctl cluster_status
 ```
 
-La consola de administración queda disponible en `http://localhost:15672` con
-`guest`/`guest`. En producción, configure `RABBITMQ_HOST`, `RABBITMQ_PORT`,
-`RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD` y las variables `RABBITMQ_*` de nombres.
+Los nodos tienen consolas en `http://localhost:15672` y `http://localhost:15673`. Las credenciales `pedidos360` / `pedidos360-local` son solo para desarrollo. La topología declara el Topic Exchange `pedidos360.orders`, tres colas principales —notificaciones, tickets y documentos— y tres DLQs, enlazadas al Direct Exchange `pedidos360.dead-letter`. Los consumidores registran las solicitudes en logs, ACK ante datos válidos y NACK sin requeue ante mensajes inválidos.
+
+La configuración local de dos nodos no crea por sí sola un clúster RabbitMQ en AWS. En producción deben desplegarse y configurarse al menos dos nodos alcanzables entre sí, con el mismo Erlang cookie, resolución DNS estable, puertos Erlang abiertos entre nodos, almacenamiento persistente y credenciales gestionadas por secretos. Configure `RABBITMQ_HOST`, `RABBITMQ_PORT`, `RABBITMQ_USERNAME` y `RABBITMQ_PASSWORD` para las aplicaciones.
 
 El microservicio administrador expone estas operaciones para usuarios `ADMIN`:
 
@@ -110,3 +104,17 @@ El microservicio administrador expone estas operaciones para usuarios `ADMIN`:
 - `POST/DELETE /api/admin/rabbitmq/bindings`
 
 Los endpoints reciben DTO validados y delegan la operación en `RabbitAdminService`.
+
+## 7. Lista de verificación de la presentación
+
+La configuración del repositorio no prueba que los recursos administrados estén desplegados. Antes de presentar, verifica y captura evidencia de:
+
+- API Gateway HTTP API, rutas, integración al backend y JWT authorizer funcionando con token inválido y válido.
+- Tenant IDaaS y usuarios registrados; login OIDC desde el frontend y Access Token válido.
+- Frontend y backend publicados y activos; navegador llamando a la API mediante API Gateway.
+- Dos nodos RabbitMQ en cloud y estado de clúster que muestre ambos nodos.
+- Tres colas principales y tres DLQ; generar un error controlado y comprobar que el mensaje llega a la DLQ correspondiente.
+- Exchanges Topic y Direct, bindings y ejecución de Docker Compose en la nube.
+- Presentación de 5 a 10 minutos con evidencia visual del flujo completo.
+
+La URL API Gateway está configurada en `pedidos360-frontend/public/runtime-config.json`. La cuenta AWS, recursos desplegados, estado del clúster y autenticación cloud requieren comprobación en la consola de AWS; no se consideran verificados solamente por esa URL.

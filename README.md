@@ -14,20 +14,17 @@
 
 El proyecto **Pedidos360** incorpora en esta tercera etapa el patrón de **Arquitectura Orientada a Eventos (EDA)** mediante **RabbitMQ** como broker de mensajería asíncrona empresarial.
 
-El objetivo central es desacoplar completamente las tareas de alta latencia o dependientes de terceros (como el envío de notificaciones y la emisión de tickets/comprobantes de venta) de las transacciones principales de negocio (checkout de órdenes), garantizando resiliencia con políticas de reintento, confirmación manual (ACK), Dead-Letter Queues (DLQ) y un servicio de administración REST para la gestión dinámica de topologías.
+Al confirmar una orden, el backend publica tareas asíncronas para notificaciones, tickets y documentos. Cada dominio tiene un consumidor, una cola durable y su propia DLQ. Los consumidores usan ACK/NACK manual; el servicio RabbitMQ Admin expone una API REST protegida para administrar la topología. Los consumidores de esta entrega validan y registran las solicitudes en logs; no envían correo ni generan archivos externos.
 
 ### 📋 Matriz de Cumplimiento de la Rúbrica (Evaluación Parcial N.° 3)
 
 | Indicador de Evaluación | Ponderación | Nivel de Desempeño | Evidencia / Ubicación en el Código |
 |---|:---:|:---:|---|
-| **1. Nombres centralizados en properties/@Configuration** | **12%** | **Muy Buen Desempeño (100%)** | `application.properties` y `RabbitMqProperties.java`. No existen valores ni nombres sueltos o duplicados en clases de negocio. |
-| **2. Declaración de beans de Queue, Exchange y Binding** | **13%** | **Muy Buen Desempeño (100%)** | `RabbitMqConfig.java`: Declara TopicExchange, DirectExchange (DLX), Queues y Bindings para notificaciones y tickets con Javadoc explicativo. |
-| **3. Aislamiento de lógica de negocio y configuración** | **10%** | **Muy Buen Desempeño (100%)** | `OrdenService.java` solo consume `OrderEventPublisher`. No conoce detalles de infraestructura ni configuración de brokers. |
-| **4. Consumidores `@RabbitListener` organizados por dominio** | **15%** | **Muy Buen Desempeño (100%)** | `OrderNotificationConsumer` (Dominio Notificaciones) y `OrderTicketConsumer` (Dominio Facturación/Tickets). |
-| **5. Confirmación ACK manual, NACK y DLQ explícito** | **20%** | **Muy Buen Desempeño (100%)** | `channel.basicAck()` ante éxito y `channel.basicNack(..., false, false)` ante fallo, desviando a DLQ con logging exhaustivo. |
-| **6. Endpoints REST de administración (`/queues`, `/exchanges`)** | **13%** | **Muy Buen Desempeño (100%)** | `RabbitAdminController.java`: expone `POST/DELETE /queues`, `POST/DELETE /exchanges` y `POST/DELETE /bindings`. |
-| **7. Lógica encapsulada en `RabbitAdminService`** | **10%** | **Muy Buen Desempeño (100%)** | `RabbitAdminService.java` encapsula `AmqpAdmin`. El controlador delega 100% en métodos de alto nivel. |
-| **8. Validación de parámetros de entrada (DTOs)** | **7%** | **Muy Buen Desempeño (100%)** | DTOs Records con `@NotBlank` y `@Pattern`, validados con `@Valid` y procesados centralizadamente por `GlobalExceptionHandler`. |
+| **Mensajería local** | Exchanges, colas, bindings y DLQ por dominio | Configurados en `pedidos360-backend/src/main/java/cl/duoc/pedidos360/messaging/RabbitMessagingConfiguration.java`. | **Implementado; pruebas unitarias** |
+| **Consumidores** | Notificaciones, tickets y documentos con ACK/NACK | `OrdenNotificacionConsumer`, `OrdenTicketConsumer` y `OrdenDocumentoConsumer`. | **Implementado; procesa y registra solicitudes** |
+| **Administración RabbitMQ** | Endpoints REST para colas, exchanges y bindings | `pedidos360-rabbitmq-admin`, con autenticación JWT y rol `ADMIN`. | **Implementado; pruebas web/servicio** |
+| **Clúster RabbitMQ local** | Dos nodos configurados con descubrimiento clásico | `compose.yaml` y `infrastructure/rabbitmq/rabbitmq.conf`. | **Configurado; requiere validar con Docker activo** |
+| **Despliegue cloud** | API Gateway, frontend/backend activos, IDaaS y RabbitMQ en nube | Existe una URL de API Gateway configurada; no se pudieron verificar credenciales AWS ni los demás recursos desde este entorno. | **Pendiente de verificación en AWS** |
 
 ---
 
@@ -49,33 +46,18 @@ El objetivo central es desacoplar completamente las tareas de alta latencia o de
          v
  [TopicExchange: 'pedidos360.orders']
          |
-         | Routing Key: 'order.created'
-         +---------------------------------------+
-         |                                       |
-         v                                       v
- [Queue: 'pedidos360.order-notifications']   [Queue: 'pedidos360.order-tickets']
-         |                                       |
-         v                                       v
- [OrderNotificationConsumer]                 [OrderTicketConsumer]
-         |                                       |
-    +----+----+                             +----+----+
-    |         |                             |         |
- (Éxito)   (Fallo)                       (Éxito)   (Fallo)
-    |         |                             |         |
- channel.   channel.                      channel.  channel.
- basicAck   basicNack                     basicAck  basicNack
-            (requeue=false)                         (requeue=false)
-              |                                       |
-              +-------------------+-------------------+
-                                  |
-                                  v
-                   [DirectExchange: 'pedidos360.dead-letter']
-                                  |
-                   +--------------+---------------+
-                   |                              |
-                   v                              v
-           [DLQ Notificaciones]             [DLQ Tickets]
-      'order.notifications.dlq'           'order.tickets.dlq'
+         | order.created.notifications
+         +-------------> [Cola notificaciones] -> [Consumidor notificaciones]
+         |                        | NACK
+         | order.created.tickets |             -> [DLQ notificaciones]
+         +-------------> [Cola tickets]        -> [Consumidor tickets]
+         |                        | NACK
+         | order.created.documents             -> [DLQ tickets]
+         +-------------> [Cola documentos]     -> [Consumidor documentos]
+                                  | NACK
+                                  +------------> [DLQ documentos]
+
+ [DirectExchange: pedidos360.dead-letter] enruta cada DLQ por su routing key.
 ```
 
 ---
@@ -87,14 +69,14 @@ El objetivo central es desacoplar completamente las tareas de alta latencia o de
 * **`pedidos360.dead-letter` (Direct Exchange, durable):** Intercambiador de letra muerta (DLX). Recibe mensajes rechazados de forma determinista hacia colas de auditoría de fallas.
 
 ### 3.2 Colas Principales y DLQs
-1. **Dominio Notificaciones:**
-   * Cola Principal: `pedidos360.order-notifications`
-     * Argumentos: `x-dead-letter-exchange=pedidos360.dead-letter`, `x-dead-letter-routing-key=order.notifications.dlq`.
-   * Cola DLQ: `pedidos360.order-notifications.dlq`
-2. **Dominio Tickets / Facturación:**
-   * Cola Principal: `pedidos360.order-tickets`
-     * Argumentos: `x-dead-letter-exchange=pedidos360.dead-letter`, `x-dead-letter-routing-key=order.tickets.dlq`.
-   * Cola DLQ: `pedidos360.order-tickets.dlq`
+
+| Dominio | Cola durable | Routing key | DLQ |
+|---|---|---|---|
+| Notificaciones | `pedidos360.order-notifications` | `order.created.notifications` | `pedidos360.order-notifications.dlq` |
+| Tickets | `pedidos360.order-tickets` | `order.created.tickets` | `pedidos360.order-tickets.dlq` |
+| Documentos | `pedidos360.order-documents` | `order.created.documents` | `pedidos360.order-documents.dlq` |
+
+Cada cola principal configura `x-dead-letter-exchange=pedidos360.dead-letter` y su routing key DLQ correspondiente.
 
 ---
 
@@ -108,52 +90,55 @@ Los administradores del sistema (`ROLE_ADMIN`) cuentan con una API REST para ges
 | `DELETE` | `/api/admin/rabbitmq/queues/{name}` | Elimina una cola existente | — |
 | `POST` | `/api/admin/rabbitmq/exchanges` | Crea un nuevo exchange | `{"name": "logs-exchange", "type": "topic", "durable": true}` |
 | `DELETE` | `/api/admin/rabbitmq/exchanges/{name}` | Elimina un exchange | — |
-| `POST` | `/api/admin/rabbitmq/bindings` | Enlaza cola con exchange | `{"queue": "...", "exchange": "...", "routingKey": "..."}` |
-| `DELETE` | `/api/admin/rabbitmq/bindings` | Elimina enlace | `{"queue": "...", "exchange": "...", "routingKey": "..."}` |
+| `POST` | `/api/admin/rabbitmq/bindings` | Enlaza cola con exchange | `{"queueName": "...", "exchangeName": "...", "routingKey": "..."}` |
+| `DELETE` | `/api/admin/rabbitmq/bindings?queueName=...&exchangeName=...&routingKey=...` | Elimina enlace | Parámetros de consulta |
 
 ### Validaciones implementadas:
-- `@NotBlank` en nombres de colas, exchanges y routing keys (rechaza cadenas vacías o compuestas por espacios).
-- `@Pattern(regexp = "(?i)direct|topic")` en el tipo de exchange (rechaza tipos inválidos).
+- `@NotBlank`, `@Size` y `@Pattern` validan nombres y routing keys, y bloquean nombres reservados.
+- `@Pattern` restringe el tipo de exchange a los valores del enum `DIRECT`, `FANOUT` o `TOPIC`.
 - Manejo centralizado vía `GlobalExceptionHandler` retornando errores `400 Bad Request` formateados.
 
 ---
 
 ## 5. Pruebas Automatizadas y Verificación
 
-El proyecto cuenta con **26 pruebas unitarias e integradas** automatizadas que validan cada componente:
+Pruebas automatizadas disponibles:
 
 ```powershell
 cd pedidos360-backend
+.\mvnw.cmd clean test
+cd ..\pedidos360-rabbitmq-admin
 mvn clean test
+cd ..\pedidos360-frontend
+npm test -- --watch=false
 ```
 
 ### Cobertura de Pruebas:
-* `RabbitMqConfigTest`: Verifica la creación de Queues, DLXs, asignación de argumentos de Dead Letter y Bindings.
-* `OrderNotificationConsumerTest`: Verifica `basicAck()` ante éxito y `basicNack()` hacia la DLQ ante fallas.
-* `OrderTicketConsumerTest`: Verifica el procesamiento del dominio de tickets y su derivación a DLQ.
-* `OrderEventPublisherTest`: Verifica la publicación en el TopicExchange con la routing key configurada.
-* `RabbitAdminControllerTest`: Valida respuestas HTTP 200/204, rechazos 400 por validación DTO y control de acceso RBAC (`401`/`403`).
-* `SecurityMockMvcTest`: Valida filtros JWT de Azure AD, claims y rechazos sin token.
-* `OrdenServiceTest`: Valida lógica transaccional de pedidos y deducción de stock.
+* `RabbitMessagingConfigurationTest`: Verifica ambos tipos de exchange y las tres colas con sus argumentos DLQ.
+* Pruebas de consumidores y productor: verifican ACK, NACK y publicación de tareas por routing key.
+* Pruebas del administrador: verifican autenticación, autorización, validación y protección de la topología interna.
+* `SecurityMockMvcTest` y `OrdenServiceTest`: cubren autorización JWT y lógica de órdenes.
 
 ---
 
 ## 6. Puesta en Marcha
 
-### 6.1 Iniciar RabbitMQ (Docker)
-Si dispones de Docker instalado:
-```powershell
-docker run -d --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management
-```
-* **Consola de Administración:** `http://localhost:15672` (Usuario: `guest`, Clave: `guest`).
+### 6.1 Iniciar la solución local (Docker)
 
-### 6.2 Iniciar Backend (Spring Boot con Java 17 LTS)
+Con Docker Desktop en ejecución, desde la raíz del repositorio:
+```powershell
+docker compose up --build -d
+```
+Esto inicia dos nodos RabbitMQ, el backend y el administrador. La consola de cada nodo está en `http://localhost:15672` y `http://localhost:15673`; usa el usuario `pedidos360` y la contraseña local `pedidos360-local`. Comprueba la membresía del clúster con `docker compose exec rabbitmq1 rabbitmqctl cluster_status`.
+
+### 6.2 Iniciar Backend por separado (opcional)
 ```powershell
 cd pedidos360-backend
-mvn spring-boot:run
+.\mvnw.cmd spring-boot:run
 ```
 
 ### 6.3 Iniciar Frontend (Angular 22)
+Antes de desarrollo local, establece `apiEndpoint` en `pedidos360-frontend/public/runtime-config.json` a `http://localhost:8080`. El archivo versionado contiene la URL API Gateway configurada para el despliegue; restaura esa URL antes de compilar o publicar la versión cloud.
 ```powershell
 cd pedidos360-frontend
 npm start
@@ -176,20 +161,13 @@ En la carpeta `docs/` se encuentran disponibles las pruebas listas para ser impo
 
 1. **Levantar broker RabbitMQ y microservicio RabbitMQ-Admin (Docker):**
    ```powershell
-   docker compose up --build -d rabbitmq rabbitmq-admin
+   docker compose up --build -d
    ```
-   * Consola RabbitMQ: `http://localhost:15672` (usuario: `pedidos360`, clave: `pedidos360-local`).
-   * Microservicio Administrador RabbitMQ: `http://localhost:8081`.
-
-2. **Poner en marcha el Backend (`pedidos360-backend`):**
-   ```powershell
-   cd pedidos360-backend
-   mvn spring-boot:run
-   ```
-   * API Base: `http://localhost:8080`
-   * Salud Actuator: `http://localhost:8080/actuator/health`
-
-3. **Poner en marcha el Frontend (`pedidos360-frontend`):**
+   * Nodos RabbitMQ: `http://localhost:15672` y `http://localhost:15673` (usuario `pedidos360`, clave local `pedidos360-local`).
+   * API del backend: `http://localhost:8080`
+   * API del administrador: `http://localhost:8081`
+   * Si Docker no inicia el backend o el administrador, revisa `docker compose logs`.
+2. **Poner en marcha el Frontend (`pedidos360-frontend`):**
    ```powershell
    cd pedidos360-frontend
    npm start
@@ -201,8 +179,4 @@ En la carpeta `docs/` se encuentran disponibles las pruebas listas para ser impo
 
 ## 9. Conclusiones
 
-La solución **Pedidos360** para la **Evaluación Parcial N.° 3** cumple con la totalidad de los criterios evaluados:
-- **Desacoplamiento asíncrono:** Tareas de notificación y emisión de comprobantes se procesan fuera del hilo de la petición HTTP.
-- **Resiliencia garantizada:** Confirmaciones manuales explícitas (ACK) y gestión de fallos con Dead-Letter Queues (DLQ) sin pérdida de mensajes.
-- **Arquitectura de múltiples microservicios:** Separación entre el servicio de negocio principal (`pedidos360-backend`) y el servicio de gestión de infraestructura de mensajería (`pedidos360-rabbitmq-admin`), ambos securizados con OAuth2 / Microsoft Entra ID.
-- **Frontend SPA reactivo:** Angular con MSAL, guards por rol y navegación adaptativa.
+El código implementa el flujo asíncrono local con tres colas principales y tres DLQ, junto con un servicio REST de administración. Los consumidores actuales simulan las tareas mediante validación y logs; no integran proveedores reales de notificación o generación documental. El clúster está descrito en Docker Compose, pero requiere una ejecución real para demostrar su estado. El despliegue de frontend/backend, API Manager y RabbitMQ en AWS no está verificado y debe demostrarse en la plataforma para completar la presentación.

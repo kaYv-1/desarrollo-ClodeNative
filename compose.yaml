@@ -1,28 +1,74 @@
 services:
-  rabbitmq:
+  rabbitmq1:
     image: rabbitmq:4-management
+    hostname: rabbitmq1
     environment:
+      RABBITMQ_NODENAME: rabbit@rabbitmq1
+      RABBITMQ_ERLANG_COOKIE: pedidos360-local-cluster-cookie
       RABBITMQ_DEFAULT_USER: pedidos360
       RABBITMQ_DEFAULT_PASS: pedidos360-local
     ports:
       - "5672:5672"
       - "15672:15672"
     volumes:
-      - rabbitmq-data:/var/lib/rabbitmq
+      - rabbitmq1-data:/var/lib/rabbitmq
+      - ./infrastructure/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
 
+  rabbitmq2:
+    image: rabbitmq:4-management
+    hostname: rabbitmq2
+    environment:
+      RABBITMQ_NODENAME: rabbit@rabbitmq2
+      RABBITMQ_ERLANG_COOKIE: pedidos360-local-cluster-cookie
+      RABBITMQ_DEFAULT_USER: pedidos360
+      RABBITMQ_DEFAULT_PASS: pedidos360-local
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+    volumes:
+      - rabbitmq2-data:/var/lib/rabbitmq
+      - ./infrastructure/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+    depends_on:
+      rabbitmq1:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  pedidos360-backend:
+    build:
+      context: ./pedidos360-backend
+    depends_on:
+      rabbitmq1:
+        condition: service_healthy
+      rabbitmq2:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: h2
+      RABBITMQ_HOST: rabbitmq1
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: pedidos360
+      RABBITMQ_PASSWORD: pedidos360-local
+    ports:
+      - "8080:8080"
+
   rabbitmq-admin:
     build:
       context: ./pedidos360-rabbitmq-admin
     depends_on:
-      rabbitmq:
+      rabbitmq1:
+        condition: service_healthy
+      rabbitmq2:
         condition: service_healthy
     environment:
-      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_HOST: rabbitmq1
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: pedidos360
       RABBITMQ_PASSWORD: pedidos360-local
@@ -30,4 +76,5 @@ services:
       - "8081:8081"
 
 volumes:
-  rabbitmq-data:
+  rabbitmq1-data:
+  rabbitmq2-data:
