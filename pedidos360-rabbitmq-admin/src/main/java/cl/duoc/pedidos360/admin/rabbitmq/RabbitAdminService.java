@@ -104,10 +104,14 @@ public class RabbitAdminService {
 
     private Set<String> managedResourceNames() {
         return Set.copyOf(List.of(
-            properties.orderCreatedExchange(),
-            properties.orderCreatedQueue(),
+            properties.ordersExchange(),
             properties.deadLetterExchange(),
-            properties.deadLetterQueue()
+            properties.notificationsQueue(),
+            properties.notificationsDeadLetterQueue(),
+            properties.ticketsQueue(),
+            properties.ticketsDeadLetterQueue(),
+            properties.documentsQueue(),
+            properties.documentsDeadLetterQueue()
         ));
     }
 }

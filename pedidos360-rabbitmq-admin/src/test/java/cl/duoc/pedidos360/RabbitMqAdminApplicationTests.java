@@ -15,7 +15,11 @@ class RabbitMqAdminApplicationTests {
 
     @Test
     void cargaLaConfiguracionDeLaTopologiaProtegida() {
-        assertThat(properties.orderCreatedQueue()).isEqualTo("pedidos360.orders.notifications");
-        assertThat(properties.deadLetterQueue()).isEqualTo("pedidos360.orders.notifications.dlq");
+        assertThat(properties.notificationsQueue()).isEqualTo("pedidos360.order-notifications");
+        assertThat(properties.ticketsQueue()).isEqualTo("pedidos360.order-tickets");
+        assertThat(properties.documentsQueue()).isEqualTo("pedidos360.order-documents");
+        assertThat(properties.notificationsDeadLetterQueue()).isEqualTo("pedidos360.order-notifications.dlq");
+        assertThat(properties.ticketsDeadLetterQueue()).isEqualTo("pedidos360.order-tickets.dlq");
+        assertThat(properties.documentsDeadLetterQueue()).isEqualTo("pedidos360.order-documents.dlq");
     }
 }

@@ -7,11 +7,19 @@ import org.springframework.validation.annotation.Validated;
 @ConfigurationProperties(prefix = "app.messaging")
 @Validated
 public record RabbitMessagingProperties(
-    @NotBlank String orderCreatedExchange,
-    @NotBlank String orderCreatedQueue,
-    @NotBlank String orderCreatedRoutingKey,
+    @NotBlank String ordersExchange,
     @NotBlank String deadLetterExchange,
-    @NotBlank String deadLetterQueue,
-    @NotBlank String deadLetterRoutingKey
+    @NotBlank String notificationsQueue,
+    @NotBlank String notificationsDeadLetterQueue,
+    @NotBlank String notificationsRoutingKey,
+    @NotBlank String notificationsDeadLetterRoutingKey,
+    @NotBlank String ticketsQueue,
+    @NotBlank String ticketsDeadLetterQueue,
+    @NotBlank String ticketsRoutingKey,
+    @NotBlank String ticketsDeadLetterRoutingKey,
+    @NotBlank String documentsQueue,
+    @NotBlank String documentsDeadLetterQueue,
+    @NotBlank String documentsRoutingKey,
+    @NotBlank String documentsDeadLetterRoutingKey
 ) {
 }

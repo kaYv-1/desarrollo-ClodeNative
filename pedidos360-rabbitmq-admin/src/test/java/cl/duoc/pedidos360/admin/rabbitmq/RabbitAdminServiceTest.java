@@ -34,10 +34,14 @@ class RabbitAdminServiceTest {
 
     @BeforeEach
     void configurarNombresDeTopologiaInterna() {
-        lenient().when(properties.orderCreatedExchange()).thenReturn("pedidos360.orders");
-        lenient().when(properties.orderCreatedQueue()).thenReturn("pedidos360.orders.notifications");
+        lenient().when(properties.ordersExchange()).thenReturn("pedidos360.orders");
         lenient().when(properties.deadLetterExchange()).thenReturn("pedidos360.dead-letter");
-        lenient().when(properties.deadLetterQueue()).thenReturn("pedidos360.orders.notifications.dlq");
+        lenient().when(properties.notificationsQueue()).thenReturn("pedidos360.order-notifications");
+        lenient().when(properties.notificationsDeadLetterQueue()).thenReturn("pedidos360.order-notifications.dlq");
+        lenient().when(properties.ticketsQueue()).thenReturn("pedidos360.order-tickets");
+        lenient().when(properties.ticketsDeadLetterQueue()).thenReturn("pedidos360.order-tickets.dlq");
+        lenient().when(properties.documentsQueue()).thenReturn("pedidos360.order-documents");
+        lenient().when(properties.documentsDeadLetterQueue()).thenReturn("pedidos360.order-documents.dlq");
     }
 
     @Test
@@ -50,7 +54,7 @@ class RabbitAdminServiceTest {
     @Test
     void impideEliminarLaColaDeMensajesDelSistema() {
         assertThatIllegalArgumentException()
-            .isThrownBy(() -> service.deleteQueue("pedidos360.orders.notifications"))
+            .isThrownBy(() -> service.deleteQueue("pedidos360.order-tickets.dlq"))
             .withMessageContaining("topología interna");
 
         verifyNoInteractions(rabbitAdmin);
