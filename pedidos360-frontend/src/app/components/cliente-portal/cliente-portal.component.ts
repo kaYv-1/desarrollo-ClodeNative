@@ -1,7 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ApiService, Producto, Orden, DetallePedido } from '../../services/api.service';
+import { finalize } from 'rxjs';
+import { ApiService, Producto, Orden, DetallePedido, OrdenParaCrear } from '../../services/api.service';
 
 @Component({
   selector: 'app-cliente-portal',
@@ -12,9 +13,9 @@ import { ApiService, Producto, Orden, DetallePedido } from '../../services/api.s
       <h1>Portal de Cliente</h1>
 
       <div class="tabs">
-        <button (click)="seleccionarTab('productos')" [class.active]="activeTab === 'productos'">Catálogo</button>
-        <button (click)="seleccionarTab('carrito')" [class.active]="activeTab === 'carrito'">Carrito ({{ carrito.length }})</button>
-        <button (click)="seleccionarTab('ordenes')" [class.active]="activeTab === 'ordenes'">Mis Órdenes</button>
+        <button type="button" class="tab-button" data-tab="productos" (click)="seleccionarTab('productos', $event)" [class.active]="activeTab === 'productos'">Catálogo</button>
+        <button type="button" class="tab-button" data-tab="carrito" (click)="seleccionarTab('carrito', $event)" [class.active]="activeTab === 'carrito'">Carrito ({{ carrito.length }})</button>
+        <button type="button" class="tab-button" data-tab="ordenes" (click)="seleccionarTab('ordenes', $event)" [class.active]="activeTab === 'ordenes'">Mis Órdenes</button>
       </div>
 
       <div *ngIf="activeTab === 'productos'" class="tab-content">
@@ -75,7 +76,7 @@ import { ApiService, Producto, Orden, DetallePedido } from '../../services/api.s
                     type="number"
                     [(ngModel)]="item.cantidad"
                     min="1"
-                    max="{{ item.producto.stock }}"
+                    [max]="item.producto.stock"
                     (change)="actualizarCarrito()">
                 </td>
                 <td>\${{ item.precioUnitario }}</td>
@@ -318,39 +319,49 @@ export class ClientePortalComponent implements OnInit {
     this.cargarMisOrdenes();
   }
 
-  seleccionarTab(tab: 'productos' | 'carrito' | 'ordenes') {
+  seleccionarTab(tab: 'productos' | 'carrito' | 'ordenes', event?: Event) {
+    event?.preventDefault();
+    event?.stopPropagation();
     this.activeTab = tab;
-    if (tab === 'productos') {
+    if (tab === 'productos' && !this.cargandoProductos) {
       this.cargarProductos();
-    } else if (tab === 'ordenes') {
+    } else if (tab === 'ordenes' && !this.cargandoOrdenes) {
       this.cargarMisOrdenes();
     }
   }
 
   cargarProductos() {
+    if (this.cargandoProductos) {
+      return;
+    }
+
     this.cargandoProductos = true;
-    this.apiService.obtenerProductosActivos().subscribe({
+    this.apiService.obtenerProductosActivos().pipe(
+      finalize(() => this.cargandoProductos = false)
+    ).subscribe({
       next: (data) => {
         this.productos = data;
-        this.cargandoProductos = false;
       },
       error: () => {
         this.mostrarError('Error cargando productos');
-        this.cargandoProductos = false;
       }
     });
   }
 
   cargarMisOrdenes() {
+    if (this.cargandoOrdenes) {
+      return;
+    }
+
     this.cargandoOrdenes = true;
-    this.apiService.obtenerTodasLasOrdenes().subscribe({
+    this.apiService.obtenerTodasLasOrdenes().pipe(
+      finalize(() => this.cargandoOrdenes = false)
+    ).subscribe({
       next: (data) => {
         this.misOrdenes = data;
-        this.cargandoOrdenes = false;
       },
       error: () => {
         this.mostrarError('Error al consultar las órdenes');
-        this.cargandoOrdenes = false;
       }
     });
   }
@@ -381,6 +392,10 @@ export class ClientePortalComponent implements OnInit {
 
   actualizarCarrito() {
     this.carrito.forEach(item => {
+      const cantidad = Number(item.cantidad);
+      item.cantidad = Number.isFinite(cantidad)
+        ? Math.min(Math.max(Math.trunc(cantidad), 1), item.producto.stock)
+        : 1;
       item.subtotal = item.cantidad * item.precioUnitario;
     });
   }
@@ -402,8 +417,7 @@ export class ClientePortalComponent implements OnInit {
       return;
     }
 
-    const nuevaOrden: Orden = {
-      cliente: {} as any,
+    const nuevaOrden: OrdenParaCrear = {
       estado: 'PENDIENTE',
       total: this.calcularTotal(),
       detalles: this.carrito.map(item => ({
@@ -423,10 +437,14 @@ export class ClientePortalComponent implements OnInit {
         this.activeTab = 'ordenes';
       },
       error: (err) => {
-        const errorMsg = err?.error?.message || 'Error al procesar la orden. Verifique el stock disponible.';
+        const errorMsg = this.obtenerMensajeError(err, 'Error al procesar la orden. Verifique el stock disponible.');
         this.mostrarError(errorMsg);
       }
     });
+  }
+
+  private obtenerMensajeError(error: { error?: { message?: string } }, fallback: string): string {
+    return error?.error?.message || fallback;
   }
 
   private mostrarError(mensaje: string) {

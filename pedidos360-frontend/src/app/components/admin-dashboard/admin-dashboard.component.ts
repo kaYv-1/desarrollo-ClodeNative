@@ -148,7 +148,7 @@ import { ApiService, Cliente, Producto, Orden } from '../../services/api.service
               <td>{{ orden.estado }}</td>
               <td>\${{ orden.total }}</td>
               <td>
-                <select (change)="cambiarEstado(orden.id!, $event)" [value]="orden.estado">
+                <select (change)="cambiarEstado(orden, $event)" [value]="orden.estado">
                   <option value="PENDIENTE">Pendiente</option>
                   <option value="PROCESADO">Procesado</option>
                   <option value="COMPLETADO">Completado</option>
@@ -385,10 +385,10 @@ export class AdminDashboardComponent implements OnInit {
     this.apiService.crearCliente(this.nuevoCliente).subscribe({
       next: () => {
         this.mostrarExito('Cliente creado exitosamente');
-        this.cargarDatos();
+        this.cargarClientes();
         this.resetClienteForm();
       },
-      error: () => this.mostrarError('Error creando cliente')
+      error: (err) => this.mostrarError(this.obtenerMensajeError(err, 'Error creando cliente'))
     });
   }
 
@@ -396,10 +396,10 @@ export class AdminDashboardComponent implements OnInit {
     this.apiService.crearProducto(this.nuevoProducto).subscribe({
       next: () => {
         this.mostrarExito('Producto creado exitosamente');
-        this.cargarDatos();
+        this.cargarProductos();
         this.resetProductoForm();
       },
-      error: () => this.mostrarError('Error creando producto')
+      error: (err) => this.mostrarError(this.obtenerMensajeError(err, 'Error creando producto'))
     });
   }
 
@@ -408,9 +408,9 @@ export class AdminDashboardComponent implements OnInit {
       this.apiService.eliminarCliente(id).subscribe({
         next: () => {
           this.mostrarExito('Cliente eliminado');
-          this.cargarDatos();
+          this.cargarClientes();
         },
-        error: () => this.mostrarError('Error eliminando cliente')
+        error: (err) => this.mostrarError(this.obtenerMensajeError(err, 'Error eliminando cliente'))
       });
     }
   }
@@ -420,22 +420,30 @@ export class AdminDashboardComponent implements OnInit {
       this.apiService.eliminarProducto(id).subscribe({
         next: () => {
           this.mostrarExito('Producto eliminado');
-          this.cargarDatos();
+          this.cargarProductos();
         },
-        error: () => this.mostrarError('Error eliminando producto')
+        error: (err) => this.mostrarError(this.obtenerMensajeError(err, 'Error eliminando producto'))
       });
     }
   }
 
-  cambiarEstado(ordenId: number, event: any) {
-    const nuevoEstado = event.target.value;
-    this.apiService.cambiarEstadoOrden(ordenId, nuevoEstado).subscribe({
+  cambiarEstado(orden: Orden, event: Event) {
+    const nuevoEstado = (event.target as HTMLSelectElement).value as Orden['estado'];
+    const estadoAnterior = orden.estado;
+    this.apiService.cambiarEstadoOrden(orden.id!, nuevoEstado).subscribe({
       next: () => {
+        orden.estado = nuevoEstado;
         this.mostrarExito('Estado actualizado');
-        this.cargarDatos();
       },
-      error: () => this.mostrarError('Error actualizando estado')
+      error: (err) => {
+        orden.estado = estadoAnterior;
+        this.mostrarError(this.obtenerMensajeError(err, 'Error actualizando estado'));
+      }
     });
+  }
+
+  private obtenerMensajeError(error: { error?: { message?: string } }, fallback: string): string {
+    return error?.error?.message || fallback;
   }
 
   private resetClienteForm() {
