@@ -15,7 +15,7 @@ public class OrdenNotificacionConsumer {
 
     private static final Logger logger = LoggerFactory.getLogger(OrdenNotificacionConsumer.class);
 
-    @RabbitListener(queues = "${app.messaging.order-created-queue}")
+    @RabbitListener(queues = "${app.messaging.notifications-queue}")
     public void procesarOrden(
         OrdenCreadaEvent event,
         Channel channel,

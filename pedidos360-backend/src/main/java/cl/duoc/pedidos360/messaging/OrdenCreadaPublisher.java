@@ -23,16 +23,23 @@ public class OrdenCreadaPublisher {
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void publicarOrdenCreada(OrdenCreadaEvent event) {
+        publicar(event, properties.notificationsRoutingKey(), "notificaciones");
+        publicar(event, properties.ticketsRoutingKey(), "tickets");
+        publicar(event, properties.documentsRoutingKey(), "documentos");
+    }
+
+    private void publicar(OrdenCreadaEvent event, String routingKey, String tarea) {
         try {
             rabbitTemplate.convertAndSend(
-                properties.orderCreatedExchange(),
-                properties.orderCreatedRoutingKey(),
+                properties.ordersExchange(),
+                routingKey,
                 event
             );
-            logger.info("Evento de creación de orden publicado. ordenId={}", event.ordenId());
+            logger.info("Tarea de {} publicada. ordenId={}", tarea, event.ordenId());
         } catch (AmqpException exception) {
             logger.error(
-                "No se pudo publicar el evento de creación de orden. ordenId={}",
+                "No se pudo publicar la tarea de {}. ordenId={}",
+                tarea,
                 event.ordenId(),
                 exception
             );
