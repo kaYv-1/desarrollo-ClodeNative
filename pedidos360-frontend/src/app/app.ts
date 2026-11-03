@@ -211,7 +211,7 @@ export class App implements OnInit, OnDestroy {
   }
 
   private fetchUserFromBackend(): void {
-    this.http.get(`${environment.azure.apiEndpoint}/api/me`).subscribe({
+    this.http.get(`${environment.apiGatewayUrl}/api/me`).subscribe({
       next: (user) => { this.backendUser = user; },
       error: (err) => {
         console.error('Error al consultar el backend protegido:', err);

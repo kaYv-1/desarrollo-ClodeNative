@@ -48,7 +48,7 @@ export interface DetallePedido {
 })
 export class ApiService {
 
-  private apiUrl = environment.azure.apiEndpoint;
+  private apiUrl = environment.apiGatewayUrl;
 
   constructor(private http: HttpClient) {}
 
