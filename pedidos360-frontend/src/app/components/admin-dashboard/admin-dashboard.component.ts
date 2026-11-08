@@ -9,12 +9,19 @@ import { ApiService, Cliente, Producto, Orden } from '../../services/api.service
   imports: [CommonModule, FormsModule],
   template: `
     <div class="admin-dashboard">
-      <h1>Panel Administrativo</h1>
+      <div class="page-heading">
+        <div>
+          <span class="eyebrow">Control operativo</span>
+          <h1>Panel administrativo</h1>
+          <p>Gestiona clientes, catálogo y el ciclo de vida de las órdenes.</p>
+        </div>
+        <span class="page-icon" aria-hidden="true">⚙️</span>
+      </div>
 
       <div class="tabs">
-        <button (click)="seleccionarTab('clientes')" [class.active]="activeTab === 'clientes'">Clientes</button>
-        <button (click)="seleccionarTab('productos')" [class.active]="activeTab === 'productos'">Productos</button>
-        <button (click)="seleccionarTab('ordenes')" [class.active]="activeTab === 'ordenes'">Órdenes</button>
+        <button type="button" (click)="seleccionarTab('clientes')" [class.active]="activeTab === 'clientes'">Clientes</button>
+        <button type="button" (click)="seleccionarTab('productos')" [class.active]="activeTab === 'productos'">Productos</button>
+        <button type="button" (click)="seleccionarTab('ordenes')" [class.active]="activeTab === 'ordenes'">Órdenes</button>
       </div>
 
       <div *ngIf="activeTab === 'clientes'" class="tab-content">
@@ -35,14 +42,15 @@ import { ApiService, Cliente, Producto, Orden } from '../../services/api.service
         </div>
 
         <form *ngIf="showClienteForm" (ngSubmit)="crearCliente()" class="form">
-          <input [(ngModel)]="nuevoCliente.nombre" name="nombre" placeholder="Nombre" required>
-          <input [(ngModel)]="nuevoCliente.email" name="email" placeholder="Email" type="email" required>
-          <input [(ngModel)]="nuevoCliente.telefono" name="telefono" placeholder="Teléfono" required>
-          <input [(ngModel)]="nuevoCliente.direccion" name="direccion" placeholder="Dirección" required>
-          <input [(ngModel)]="nuevoCliente.ciudad" name="ciudad" placeholder="Ciudad" required>
-          <input [(ngModel)]="nuevoCliente.pais" name="pais" placeholder="País" required>
-          <button type="submit">Guardar</button>
+          <label>Nombre<input [(ngModel)]="nuevoCliente.nombre" name="nombre" placeholder="Nombre completo" required></label>
+          <label>Email<input [(ngModel)]="nuevoCliente.email" name="email" placeholder="correo@ejemplo.com" type="email" required></label>
+          <label>Teléfono<input [(ngModel)]="nuevoCliente.telefono" name="telefono" placeholder="+56 9..." required></label>
+          <label>Dirección<input [(ngModel)]="nuevoCliente.direccion" name="direccion" placeholder="Dirección" required></label>
+          <label>Ciudad<input [(ngModel)]="nuevoCliente.ciudad" name="ciudad" placeholder="Ciudad" required></label>
+          <label>País<input [(ngModel)]="nuevoCliente.pais" name="pais" placeholder="País" required></label>
+          <div class="form-actions"><button type="submit">Guardar cliente</button>
           <button type="button" (click)="showClienteForm = false">Cancelar</button>
+          </div>
         </form>
 
         <table>
@@ -85,12 +93,13 @@ import { ApiService, Cliente, Producto, Orden } from '../../services/api.service
         </div>
 
         <form *ngIf="showProductoForm" (ngSubmit)="crearProducto()" class="form">
-          <input [(ngModel)]="nuevoProducto.nombre" name="nombre" placeholder="Nombre" required>
-          <input [(ngModel)]="nuevoProducto.precio" name="precio" placeholder="Precio" type="number" required>
-          <input [(ngModel)]="nuevoProducto.stock" name="stock" placeholder="Stock" type="number" required>
-          <textarea [(ngModel)]="nuevoProducto.descripcion" name="descripcion" placeholder="Descripción"></textarea>
-          <button type="submit">Guardar</button>
+          <label>Nombre<input [(ngModel)]="nuevoProducto.nombre" name="nombre" placeholder="Nombre del producto" required></label>
+          <label>Precio<input [(ngModel)]="nuevoProducto.precio" name="precio" placeholder="0" type="number" min="0" required></label>
+          <label>Stock<input [(ngModel)]="nuevoProducto.stock" name="stock" placeholder="0" type="number" min="0" required></label>
+          <label>Descripción<textarea [(ngModel)]="nuevoProducto.descripcion" name="descripcion" placeholder="Descripción"></textarea></label>
+          <div class="form-actions"><button type="submit">Guardar producto</button>
           <button type="button" (click)="showProductoForm = false">Cancelar</button>
+          </div>
         </form>
 
         <table>
@@ -280,6 +289,87 @@ import { ApiService, Cliente, Producto, Orden } from '../../services/api.service
       color: #666;
       padding: 20px;
       font-size: 1.05em;
+    }
+    .page-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .page-heading h1 {
+      margin: 0.2rem 0 0;
+      color: #172033;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: clamp(1.7rem, 4vw, 2.5rem);
+      letter-spacing: -0.04em;
+    }
+    .page-heading p { margin: .5rem 0 0; color: #64748b; }
+    .eyebrow {
+      color: #2563eb;
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .page-icon {
+      display: grid;
+      width: 3.5rem;
+      height: 3.5rem;
+      place-items: center;
+      border-radius: 1rem;
+      background: #dbeafe;
+      font-size: 1.6rem;
+    }
+    .tabs {
+      padding: .35rem;
+      border: 1px solid #e2e8f0;
+      border-radius: .9rem;
+      background: #fff;
+    }
+    .tabs button {
+      border: 0;
+      border-radius: .65rem;
+      background: transparent;
+      color: #64748b;
+      font-weight: 700;
+    }
+    .tabs button.active {
+      background: #2563eb;
+      box-shadow: 0 5px 12px rgba(37, 99, 235, .22);
+    }
+    .tab-content {
+      border: 1px solid #e2e8f0;
+      background: rgba(255,255,255,.88);
+      box-shadow: 0 12px 35px rgba(15, 23, 42, .06);
+      overflow-x: auto;
+    }
+    .form {
+      padding: 1rem;
+      border: 1px solid #dbeafe;
+      border-radius: .9rem;
+      background: #f8fbff;
+    }
+    .form label {
+      display: grid;
+      gap: .35rem;
+      color: #475569;
+      font-size: .85rem;
+      font-weight: 600;
+    }
+    .form input, .form textarea, .form select {
+      border-color: #cbd5e1;
+      background: #fff;
+      padding: .7rem;
+    }
+    .form-actions { display: flex; gap: .6rem; }
+    .form-actions button:last-child { background: #e2e8f0; color: #334155; }
+    .tab-content table { min-width: 680px; }
+    @media (max-width: 640px) {
+      .admin-dashboard { padding: 0; }
+      .page-heading { align-items: flex-start; }
+      .page-icon { display: none; }
+      .header-actions { width: 100%; flex-wrap: wrap; }
     }
   `]
 })

@@ -224,8 +224,117 @@ En la carpeta `docs/` se encuentran disponibles las pruebas listas para ser impo
 
 ## 9. Conclusiones
 
+## 10. Entornos locales de mensajería
+
+Los Compose de la Fase 2 están en la carpeta `docker/`. Requieren Docker
+Desktop con Compose v2.
+
+### Kafka: 3 Zookeeper, 3 brokers y Kafka UI
+
+```powershell
+docker compose -f docker/docker-compose-kafka.yml up -d
+docker compose -f docker/docker-compose-kafka.yml ps
+```
+
+Kafka queda disponible desde el host en `localhost:9092`, `localhost:9093` y
+`localhost:9094`. Kafka UI se puede abrir en
+<http://localhost:8085>. Para revisar los logs:
+
+```powershell
+docker compose -f docker/docker-compose-kafka.yml logs --tail=100 kafka1 kafka2 kafka3 kafka-ui
+```
+
+### RabbitMQ: clúster de 2 nodos
+
+```powershell
+docker compose -f docker/docker-compose-rabbitmq.yml up -d
+docker compose -f docker/docker-compose-rabbitmq.yml ps
+```
+
+El primer nodo usa AMQP `localhost:5672` y gestión en
+<http://localhost:15672>; el segundo usa AMQP `localhost:5673` y gestión en
+<http://localhost:15673>. Las credenciales locales son `pedidos360` /
+`pedidos360-local`.
+
+Para verificar que ambos nodos están activos y que el segundo pertenece al
+clúster:
+
+```powershell
+docker compose -f docker/docker-compose-rabbitmq.yml exec rabbitmq1 rabbitmq-diagnostics cluster_status
+docker compose -f docker/docker-compose-rabbitmq.yml exec rabbitmq2 rabbitmq-diagnostics cluster_status
+```
+
+Para detener cada entorno y eliminar sus volúmenes locales:
+
+```powershell
+docker compose -f docker/docker-compose-kafka.yml down -v
+docker compose -f docker/docker-compose-rabbitmq.yml down -v
+```
+
+## 11. Streaming Kafka en el backend
+
+El backend usa `spring-kafka` con productores y consumidores JSON tipados. Para
+activar el consumidor al ejecutar el backend localmente, levanta primero el
+clúster Kafka y establece:
+
+```powershell
+$env:KAFKA_LISTENER_AUTO_STARTUP="true"
+$env:KAFKA_ADMIN_AUTO_CREATE="true"
+cd pedidos360-backend
+.\mvnw.cmd spring-boot:run
+```
+
+La configuración usa por defecto
+`localhost:9092,localhost:9093,localhost:9094`, el grupo
+`pedidos360-orders` y declara estos tópicos con 3 particiones, 3 réplicas,
+retención de 7 días y `cleanup.policy=delete`:
+
+- `pedidos360.orders.created`
+- `pedidos360.orders.notifications`
+
+El administrador Kafka está expuesto en el backend bajo
+`/api/admin/kafka/topics` y requiere el rol `ADMIN`:
+
+| Método | Endpoint | Operación |
+|---|---|---|
+| `POST` | `/api/admin/kafka/topics` | Crear tópico con particiones, réplicas y retención |
+| `GET` | `/api/admin/kafka/topics` | Listar tópicos y configuración |
+| `GET` | `/api/admin/kafka/topics/{name}` | Consultar un tópico |
+| `PUT` | `/api/admin/kafka/topics/{name}/config` | Modificar retención y política de limpieza |
+| `DELETE` | `/api/admin/kafka/topics/{name}` | Eliminar tópico |
+
+Los errores del consumidor se procesan con `DefaultErrorHandler` y tres
+reintentos con backoff de un segundo. El offset no se confirma mientras el
+procesamiento falle.
+
 La solución **Pedidos360** para la **Evaluación Parcial N.° 3** cumple con la totalidad de los criterios evaluados:
 - **Desacoplamiento asíncrono:** `OrdenService` emite un evento de dominio (`OrdenCreadaEvent`) vía `ApplicationEventPublisher` de Spring. `OrdenCreadaPublisher` escucha con `@TransactionalEventListener` y publica a RabbitMQ solo tras el commit transaccional.
 - **Resiliencia garantizada:** Confirmaciones manuales explícitas (`basicAck`) y gestión de fallos con Dead-Letter Queue (`basicNack` sin requeue) sin pérdida de mensajes.
 - **Arquitectura de múltiples microservicios:** Separación entre el servicio de negocio principal (`pedidos360-backend`) y el servicio de gestión de infraestructura de mensajería (`pedidos360-rabbitmq-admin`), ambos securizados con OAuth2 / Microsoft Entra ID.
 - **Frontend SPA reactivo:** Angular con MSAL, guards por rol y navegación adaptativa.
+
+## 12. Actualización visual y navegación del frontend
+
+El frontend Angular incorpora una actualización visual para mantener una
+experiencia consistente entre el inicio de sesión, el portal de cliente, el
+panel de administración y la pantalla de acceso denegado:
+
+- Se renovaron el encabezado, la identidad visual, la tipografía, los estados
+  de foco y el comportamiento responsive.
+- El portal cliente separa claramente las pestañas **Catálogo**, **Carrito** y
+  **Mis órdenes**. El encabezado muestra **Mi portal** como título no
+  interactivo.
+- El tab activo puede abrirse mediante el parámetro `tab` de la URL, por
+  ejemplo `http://localhost:4200/portal?tab=carrito`.
+- La carga del catálogo y de las órdenes se realiza automáticamente al entrar
+  al portal.
+- Se eliminaron los botones de refresco que podían permanecer mostrando
+  `Actualizando...`; durante una consulta se presenta un estado de carga
+  dentro del contenido y, al finalizar, se muestra la información o el estado
+  vacío correspondiente.
+- El panel de administración y la pantalla 403 fueron ajustados para usar los
+  mismos patrones visuales y controles accesibles.
+
+Para desarrollo local, la URL del backend se configura en
+`pedidos360-frontend/public/runtime-config.json`. En producción debe
+reemplazarse por la URL real del API Gateway antes de compilar el frontend.

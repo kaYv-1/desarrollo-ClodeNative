@@ -1,15 +1,19 @@
 <header class="app-header">
-  <div class="brand">
-    <h2>📦 Pedidos360</h2>
-    <span *ngIf="userRole" class="badge-role" [class.badge-admin]="isAdmin" [class.badge-cliente]="isCliente">
-      {{ isAdmin ? '⚙️ ADMIN' : '🛒 CLIENTE' }}
+  <a class="brand" routerLink="/" aria-label="Ir al inicio de Pedidos360">
+    <span class="brand-mark" aria-hidden="true">P</span>
+    <span>
+      <strong>Pedidos360</strong>
+      <small>Cloud commerce</small>
     </span>
-  </div>
+    <span *ngIf="userRole" class="badge-role" [class.badge-admin]="isAdmin" [class.badge-cliente]="isCliente">
+      {{ isAdmin ? 'ADMIN' : 'CLIENTE' }}
+    </span>
+  </a>
 
   <!-- Nav: solo muestra los links que corresponden al rol -->
   <nav *ngIf="isLoggedIn && userRole" class="nav-menu">
-    <a *ngIf="isCliente" routerLink="/portal" routerLinkActive="active" class="nav-btn">🛒 Mi Portal</a>
-    <a *ngIf="isAdmin"   routerLink="/admin"  routerLinkActive="active" class="nav-btn">⚙️ Panel Admin</a>
+    <span *ngIf="isCliente" class="nav-title">Mi portal</span>
+    <a *ngIf="isAdmin" routerLink="/admin" routerLinkActive="active" class="nav-btn">Panel admin</a>
   </nav>
 
   <div class="user-session">
@@ -20,7 +24,7 @@
     </div>
 
     <div *ngIf="isLoggedIn" class="user-details">
-      <span class="user-badge">👤 {{ userName }} <strong class="roles-tag">[{{ userRole ?? 'Sin rol' }}]</strong></span>
+      <span class="user-badge"><span class="user-avatar" aria-hidden="true">{{ userName.charAt(0).toUpperCase() }}</span>{{ userName }} <strong class="roles-tag">{{ userRole ?? 'Sin rol' }}</strong></span>
       <button type="button" class="btn btn-danger btn-sm" (click)="logout()">Cerrar Sesión</button>
     </div>
   </div>
@@ -53,6 +57,6 @@
   </div>
 </div>
 
-<main class="app-main-content">
+<main class="app-main-content" aria-live="polite">
   <router-outlet></router-outlet>
 </main>
