@@ -216,7 +216,7 @@ export class App implements OnInit, OnDestroy {
         this.backendUser = null;
         this.userRole = null;
         if (err?.status === 0) {
-          this.httpAuthError = `No se pudo conectar con el backend (${environment.azure.apiEndpoint}). Verifica que el backend esté ejecutándose en ese puerto o revisa public/runtime-config.json.`;
+          this.httpAuthError = `No se pudo conectar con el backend (${environment.apiGatewayUrl}). Revisa la configuración de public/runtime-config.json.`;
         } else if (err?.status === 401 || err?.status === 403) {
           this.httpAuthError = 'Tu cuenta no tiene autorización en el backend para obtener el perfil (401/403).';
         } else {

@@ -5,21 +5,21 @@ import { App } from './app/app';
 import { environment } from './environments/environment';
 
 interface RuntimeConfig {
-  apiEndpoint: string;
+  apiGatewayUrl: string;
 }
 
 function isRuntimeConfig(value: unknown): value is RuntimeConfig {
-  if (typeof value !== 'object' || value === null || !('apiEndpoint' in value)) {
+  if (typeof value !== 'object' || value === null || !('apiGatewayUrl' in value)) {
     return false;
   }
 
-  const apiEndpoint = value.apiEndpoint;
-  if (typeof apiEndpoint !== 'string' || apiEndpoint.trim() === '') {
+  const apiGatewayUrl = value.apiGatewayUrl;
+  if (typeof apiGatewayUrl !== 'string' || apiGatewayUrl.trim() === '') {
     return false;
   }
 
   try {
-    const endpoint = new URL(apiEndpoint);
+    const endpoint = new URL(apiGatewayUrl);
     return ['http:', 'https:'].includes(endpoint.protocol)
       && endpoint.username === ''
       && endpoint.password === ''
@@ -39,11 +39,11 @@ async function bootstrap(): Promise<void> {
 
   const config: unknown = await response.json();
   if (!isRuntimeConfig(config)) {
-    throw new Error('runtime-config.json debe contener una URL HTTP(S) válida en apiEndpoint.');
+    throw new Error('runtime-config.json debe contener una URL HTTP(S) válida en apiGatewayUrl.');
   }
 
-  const endpoint = new URL(config.apiEndpoint);
-  environment.azure.apiEndpoint = `${endpoint.origin}${endpoint.pathname}`.replace(/\/+$/, '');
+  const endpoint = new URL(config.apiGatewayUrl);
+  environment.apiGatewayUrl = `${endpoint.origin}${endpoint.pathname}`.replace(/\/+$/, '');
   await bootstrapApplication(App, appConfig);
 }
 
