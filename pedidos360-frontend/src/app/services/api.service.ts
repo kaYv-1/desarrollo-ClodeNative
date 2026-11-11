@@ -34,6 +34,10 @@ export interface Orden {
   detalles?: DetallePedido[];
 }
 
+export type OrdenParaCrear = Omit<Orden, 'cliente'> & {
+  cliente?: Pick<Cliente, 'id'>;
+};
+
 export interface DetallePedido {
   id?: number;
   orden?: Orden;
@@ -56,7 +60,7 @@ export interface PerfilAutenticado {
 })
 export class ApiService {
 
-  private apiUrl = environment.azure.apiEndpoint;
+  private apiUrl = environment.apiGatewayUrl;
 
   constructor(private http: HttpClient) {}
 
@@ -111,7 +115,7 @@ export class ApiService {
   }
 
   // Orden endpoints
-  crearOrden(orden: Orden): Observable<Orden> {
+  crearOrden(orden: OrdenParaCrear): Observable<Orden> {
     return this.http.post<Orden>(`${this.apiUrl}/api/ordenes`, orden);
   }
 

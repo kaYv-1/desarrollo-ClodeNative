@@ -1,1 +1,49 @@
-/* You can add global styles to this file, and also import other style files */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+:root {
+  color-scheme: light;
+  --ink: #172033;
+  --muted: #64748b;
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --surface: #ffffff;
+  --surface-soft: #f8fafc;
+  --line: #e2e8f0;
+  --success: #15803d;
+  --danger: #b91c1c;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  color: var(--ink);
+  background: #f1f5f9;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  background:
+    radial-gradient(circle at 8% 0%, rgba(37, 99, 235, 0.1), transparent 30rem),
+    #f1f5f9;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.35);
+  outline-offset: 2px;
+}

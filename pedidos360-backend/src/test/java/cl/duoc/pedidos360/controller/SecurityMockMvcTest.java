@@ -11,7 +11,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 
 @WebMvcTest(controllers = HealthController.class)
 @Import(SecurityConfig.class)
@@ -28,6 +30,16 @@ class SecurityMockMvcTest {
     void endpointProtegidoRechazaPeticionSinToken() throws Exception {
         mockMvc.perform(get("/api/me"))
             .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void preflightCorsNoRequiereToken() throws Exception {
+        mockMvc.perform(options("/api/me")
+                .header("Origin", "http://localhost:4200")
+                .header("Access-Control-Request-Method", "GET")
+                .header("Access-Control-Request-Headers", "authorization"))
+            .andExpect(status().isOk())
+            .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:4200"));
     }
 
     @Test

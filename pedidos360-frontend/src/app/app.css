@@ -2,9 +2,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #1e293b;
+  background: rgba(15, 23, 42, 0.96);
   color: #fff;
-  padding: 0.8rem 2rem;
+  padding: 0.9rem clamp(1rem, 4vw, 3.5rem);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   flex-wrap: wrap;
   gap: 1rem;
@@ -14,12 +14,37 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  color: #fff;
+  text-decoration: none;
 }
 
-.brand h2 {
-  margin: 0;
-  font-size: 1.4rem;
-  color: #f8fafc;
+.brand strong,
+.brand small {
+  display: block;
+}
+
+.brand strong {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.15rem;
+  letter-spacing: -0.02em;
+}
+
+.brand small {
+  color: #94a3b8;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.brand-mark {
+  display: grid;
+  width: 2.2rem;
+  height: 2.2rem;
+  place-items: center;
+  border-radius: 0.7rem;
+  background: linear-gradient(135deg, #38bdf8, #2563eb);
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
 }
 
 
@@ -52,8 +77,14 @@
   text-decoration: none;
   font-weight: 600;
   padding: 0.5rem 1rem;
-  border-radius: 6px;
+  border-radius: 0.65rem;
   transition: all 0.2s ease;
+}
+
+.nav-title {
+  color: #f8fafc;
+  font-weight: 700;
+  padding: 0.5rem 0.25rem;
 }
 
 .nav-btn:hover {
@@ -78,13 +109,31 @@
 }
 
 .user-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
   font-size: 0.9rem;
   color: #e2e8f0;
 }
 
 .roles-tag {
   color: #38bdf8;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.12);
+  font-size: 0.72rem;
+}
+
+.user-avatar {
+  display: grid;
+  width: 1.75rem;
+  height: 1.75rem;
+  place-items: center;
+  border-radius: 50%;
+  background: #e0f2fe;
+  color: #0369a1;
   font-size: 0.8rem;
+  font-weight: 700;
 }
 
 .btn {
@@ -151,23 +200,26 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  background: linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%);
+  background: transparent;
   padding: 2rem;
 }
 
 .hero-card {
   background: #fff;
-  border-radius: 12px;
-  padding: 2.5rem;
-  max-width: 550px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 1.5rem;
+  padding: clamp(2rem, 6vw, 4.5rem);
+  max-width: 650px;
   text-align: center;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.12);
 }
 
 .hero-card h3 {
   margin-top: 0;
   color: #0f172a;
-  font-size: 1.6rem;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  letter-spacing: -0.04em;
 }
 
 .hero-card p {
@@ -183,5 +235,31 @@
 }
 
 .app-main-content {
-  padding: 1.5rem;
+  padding: clamp(1rem, 3vw, 2rem);
+}
+
+@media (max-width: 720px) {
+  .app-header {
+    align-items: flex-start;
+  }
+
+  .nav-menu {
+    order: 3;
+    width: 100%;
+  }
+
+  .nav-btn {
+    flex: 1;
+    text-align: center;
+  }
+
+  .user-details {
+    align-items: flex-end;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .alert {
+    margin-inline: 1rem;
+  }
 }

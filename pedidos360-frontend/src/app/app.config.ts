@@ -38,7 +38,7 @@ export function MSALInstanceFactory(): IPublicClientApplication {
 export function MSALInterceptorConfigFactory(): MsalInterceptorConfiguration {
   const protectedResourceMap = new Map<string, Array<string>>();
   // Asocia las llamadas al backend con el scope definido en Azure
-  protectedResourceMap.set(`${environment.azure.apiEndpoint}/*`, [environment.azure.apiScope]);
+  protectedResourceMap.set(`${environment.apiGatewayUrl}/*`, [environment.azure.apiScope]);
 
   return {
     interactionType: InteractionType.Redirect,

@@ -134,6 +134,7 @@ export class App implements OnInit, OnDestroy {
 
     this.msalService.loginRedirect({
       scopes: environment.azure.loginScopes,
+      prompt: 'select_account',
     }).subscribe({
       next: () => undefined,
       error: (err) => {
@@ -201,6 +202,7 @@ export class App implements OnInit, OnDestroy {
   private fetchUserFromBackend(): void {
     this.apiService.obtenerPerfilAutenticado().subscribe({
       next: (profile) => {
+        this.httpAuthError = '';
         this.backendUser = profile;
         const roles = (profile.roles ?? []).map(role => role.toUpperCase());
         this.userRole = roles.find(
@@ -209,15 +211,22 @@ export class App implements OnInit, OnDestroy {
         this.noRoleError = this.isLoggedIn && this.userRole === null;
         this.navigateByRole();
       },
-      error: (err) => {
+      error: (err: { status?: number }) => {
         console.error('Error al consultar el backend protegido:', err);
         this.backendUser = null;
         this.userRole = null;
+        if (err?.status === 0) {
+          this.httpAuthError = `No se pudo conectar con el backend (${environment.apiGatewayUrl}). Revisa la configuración de public/runtime-config.json.`;
+        } else if (err?.status === 401 || err?.status === 403) {
+          this.httpAuthError = 'Tu cuenta no tiene autorización en el backend para obtener el perfil (401/403).';
+        } else {
+          this.httpAuthError = `Error al consultar el backend (HTTP ${err?.status ?? 'desconocido'}).`;
+        }
       }
     });
   }
 
-  logout(): void {
+  async logout(): Promise<void> {
     this.isAuthenticating = false;
     this.backendUser = null;
     this.isLoggedIn = false;
@@ -225,14 +234,24 @@ export class App implements OnInit, OnDestroy {
     this.userEmail = '';
     this.userRole = null;
     this.authError = '';
+    this.httpAuthError = '';
     this.noRoleError = false;
-    this.msalService.instance.setActiveAccount(null);
 
-    this.msalService.logoutPopup({
-      postLogoutRedirectUri: environment.azure.postLogoutRedirectUri,
-    }).subscribe({
-      error: (err) => console.error('Error en logout popup:', err)
-    });
+    try {
+      this.msalService.instance.setActiveAccount(null);
+      await this.msalService.instance.clearCache();
+    } catch (err) {
+      console.warn('Error al limpiar caché de MSAL:', err);
+    }
+
+    if (typeof window !== 'undefined') {
+      sessionStorage.clear();
+      Object.keys(localStorage)
+        .filter(key => key.startsWith('msal.') || key.includes('login.microsoftonline.com'))
+        .forEach(key => localStorage.removeItem(key));
+    }
+
+    await this.router.navigate(['/']);
   }
 
   ngOnDestroy(): void {

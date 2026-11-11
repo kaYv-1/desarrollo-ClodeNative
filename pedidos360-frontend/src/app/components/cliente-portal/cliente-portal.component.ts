@@ -1,7 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ApiService, Producto, Orden, DetallePedido } from '../../services/api.service';
+import { ActivatedRoute } from '@angular/router';
+import { finalize } from 'rxjs';
+import { ApiService, Producto, Orden, DetallePedido, OrdenParaCrear } from '../../services/api.service';
 
 @Component({
   selector: 'app-cliente-portal',
@@ -9,20 +11,24 @@ import { ApiService, Producto, Orden, DetallePedido } from '../../services/api.s
   imports: [CommonModule, FormsModule],
   template: `
     <div class="cliente-portal">
-      <h1>Portal de Cliente</h1>
+      <div class="page-heading">
+        <div>
+          <span class="eyebrow">Área personal</span>
+          <h1>Tu espacio de compras</h1>
+          <p>Explora el catálogo, administra tu carrito y revisa tus órdenes.</p>
+        </div>
+        <span class="page-icon" aria-hidden="true">🛍️</span>
+      </div>
 
       <div class="tabs">
-        <button (click)="seleccionarTab('productos')" [class.active]="activeTab === 'productos'">Catálogo</button>
-        <button (click)="seleccionarTab('carrito')" [class.active]="activeTab === 'carrito'">Carrito ({{ carrito.length }})</button>
-        <button (click)="seleccionarTab('ordenes')" [class.active]="activeTab === 'ordenes'">Mis Órdenes</button>
+        <button type="button" class="tab-button" data-tab="productos" (click)="seleccionarTab('productos', $event)" [class.active]="activeTab === 'productos'" [attr.aria-selected]="activeTab === 'productos'">Catálogo</button>
+        <button type="button" class="tab-button" data-tab="carrito" (click)="seleccionarTab('carrito', $event)" [class.active]="activeTab === 'carrito'" [attr.aria-selected]="activeTab === 'carrito'">Carrito <span class="tab-count">{{ carrito.length }}</span></button>
+        <button type="button" class="tab-button" data-tab="ordenes" (click)="seleccionarTab('ordenes', $event)" [class.active]="activeTab === 'ordenes'" [attr.aria-selected]="activeTab === 'ordenes'">Mis órdenes</button>
       </div>
 
       <div *ngIf="activeTab === 'productos'" class="tab-content">
         <div class="tab-header">
           <h2>Catálogo de Productos</h2>
-          <button type="button" (click)="cargarProductos()" [disabled]="cargandoProductos" class="btn-refresh">
-            {{ cargandoProductos ? '🔄 Actualizando...' : '🔄 Refrescar Catálogo' }}
-          </button>
         </div>
 
         <div *ngIf="cargandoProductos && productos.length === 0" class="loading-state">
@@ -39,7 +45,7 @@ import { ApiService, Producto, Orden, DetallePedido } from '../../services/api.s
             <p>{{ producto.descripcion }}</p>
             <p class="precio">\${{ producto.precio }}</p>
             <p class="stock" [class.sin-stock]="producto.stock === 0">
-              Stock: {{ producto.stock }}
+            {{ producto.stock === 0 ? 'Sin stock' : producto.stock + ' disponibles' }}
             </p>
             <button
               (click)="agregarAlCarrito(producto)"
@@ -75,13 +81,14 @@ import { ApiService, Producto, Orden, DetallePedido } from '../../services/api.s
                     type="number"
                     [(ngModel)]="item.cantidad"
                     min="1"
-                    max="{{ item.producto.stock }}"
-                    (change)="actualizarCarrito()">
+                    [max]="item.producto.stock"
+                    (change)="actualizarCarrito()"
+                    [attr.aria-label]="'Cantidad de ' + item.producto.nombre">
                 </td>
                 <td>\${{ item.precioUnitario }}</td>
                 <td>\${{ item.subtotal }}</td>
                 <td>
-                  <button (click)="eliminarDelCarrito(item)">Eliminar</button>
+                  <button type="button" class="btn-remove" (click)="eliminarDelCarrito(item)" [attr.aria-label]="'Eliminar ' + item.producto.nombre">Eliminar</button>
                 </td>
               </tr>
             </tbody>
@@ -96,9 +103,6 @@ import { ApiService, Producto, Orden, DetallePedido } from '../../services/api.s
       <div *ngIf="activeTab === 'ordenes'" class="tab-content">
         <div class="tab-header">
           <h2>Mis Órdenes</h2>
-          <button type="button" (click)="cargarMisOrdenes()" [disabled]="cargandoOrdenes" class="btn-refresh">
-            {{ cargandoOrdenes ? '🔄 Actualizando...' : '🔄 Refrescar Órdenes' }}
-          </button>
         </div>
 
         <div *ngIf="cargandoOrdenes && misOrdenes.length === 0" class="loading-state">
@@ -296,6 +300,106 @@ import { ApiService, Producto, Orden, DetallePedido } from '../../services/api.s
       padding: 30px;
       font-size: 1.05em;
     }
+    .page-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .page-heading h1 {
+      margin: 0.2rem 0 0;
+      color: #172033;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: clamp(1.7rem, 4vw, 2.5rem);
+      letter-spacing: -0.04em;
+    }
+    .page-heading p {
+      margin: 0.5rem 0 0;
+      color: #64748b;
+    }
+    .eyebrow {
+      color: #2563eb;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .page-icon {
+      display: grid;
+      width: 3.5rem;
+      height: 3.5rem;
+      place-items: center;
+      border-radius: 1rem;
+      background: #dbeafe;
+      font-size: 1.6rem;
+    }
+    .tabs {
+      padding: 0.35rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.9rem;
+      background: #fff;
+    }
+    .tabs button {
+      border: 0;
+      background: transparent;
+      color: #64748b;
+      font-weight: 700;
+    }
+    .tabs button.active {
+      background: #2563eb;
+      box-shadow: 0 5px 12px rgba(37, 99, 235, 0.22);
+    }
+    .tab-count {
+      display: inline-grid;
+      min-width: 1.35rem;
+      height: 1.35rem;
+      margin-left: 0.25rem;
+      padding-inline: 0.25rem;
+      place-items: center;
+      border-radius: 999px;
+      background: rgba(255,255,255,.22);
+      font-size: 0.75rem;
+    }
+    .tab-content {
+      border: 1px solid #e2e8f0;
+      background: rgba(255,255,255,.88);
+      box-shadow: 0 12px 35px rgba(15, 23, 42, .06);
+    }
+    .producto-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 0.9rem;
+      transition: transform .2s ease, box-shadow .2s ease;
+    }
+    .producto-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 24px rgba(15, 23, 42, .08);
+    }
+    .producto-card h3 {
+      margin-top: 0;
+      color: #172033;
+    }
+    .add-to-cart, .checkout-btn {
+      background: #2563eb;
+    }
+    .btn-remove {
+      border: 0;
+      border-radius: 0.45rem;
+      background: #fee2e2;
+      color: #b91c1c;
+      cursor: pointer;
+      padding: 0.45rem 0.7rem;
+    }
+    .tab-content table {
+      min-width: 620px;
+    }
+    @media (max-width: 640px) {
+      .cliente-portal { padding: 0; }
+      .page-heading { align-items: flex-start; }
+      .page-icon { display: none; }
+      .tab-header { align-items: flex-start; flex-direction: column; }
+      .cart-summary { text-align: left; }
+    }
   `]
 })
 export class ClientePortalComponent implements OnInit {
@@ -311,46 +415,65 @@ export class ClientePortalComponent implements OnInit {
   errorMessage = '';
   successMessage = '';
 
-  constructor(private apiService: ApiService) {}
+  constructor(
+    private apiService: ApiService,
+    private route: ActivatedRoute
+  ) {}
 
   ngOnInit() {
+    this.route.queryParamMap.subscribe(params => {
+      const tab = params.get('tab');
+      if (tab === 'carrito' || tab === 'ordenes' || tab === 'productos') {
+        this.activeTab = tab;
+      }
+    });
     this.cargarProductos();
     this.cargarMisOrdenes();
   }
 
-  seleccionarTab(tab: 'productos' | 'carrito' | 'ordenes') {
+  seleccionarTab(tab: 'productos' | 'carrito' | 'ordenes', event?: Event) {
+    event?.preventDefault();
+    event?.stopPropagation();
     this.activeTab = tab;
-    if (tab === 'productos') {
+    if (tab === 'productos' && !this.cargandoProductos) {
       this.cargarProductos();
-    } else if (tab === 'ordenes') {
+    } else if (tab === 'ordenes' && !this.cargandoOrdenes) {
       this.cargarMisOrdenes();
     }
   }
 
   cargarProductos() {
+    if (this.cargandoProductos) {
+      return;
+    }
+
     this.cargandoProductos = true;
-    this.apiService.obtenerProductosActivos().subscribe({
+    this.apiService.obtenerProductosActivos().pipe(
+      finalize(() => this.cargandoProductos = false)
+    ).subscribe({
       next: (data) => {
         this.productos = data;
-        this.cargandoProductos = false;
       },
       error: () => {
         this.mostrarError('Error cargando productos');
-        this.cargandoProductos = false;
       }
     });
   }
 
   cargarMisOrdenes() {
+    if (this.cargandoOrdenes) {
+      return;
+    }
+
     this.cargandoOrdenes = true;
-    this.apiService.obtenerTodasLasOrdenes().subscribe({
+    this.apiService.obtenerTodasLasOrdenes().pipe(
+      finalize(() => this.cargandoOrdenes = false)
+    ).subscribe({
       next: (data) => {
         this.misOrdenes = data;
-        this.cargandoOrdenes = false;
       },
       error: () => {
         this.mostrarError('Error al consultar las órdenes');
-        this.cargandoOrdenes = false;
       }
     });
   }
@@ -381,6 +504,10 @@ export class ClientePortalComponent implements OnInit {
 
   actualizarCarrito() {
     this.carrito.forEach(item => {
+      const cantidad = Number(item.cantidad);
+      item.cantidad = Number.isFinite(cantidad)
+        ? Math.min(Math.max(Math.trunc(cantidad), 1), item.producto.stock)
+        : 1;
       item.subtotal = item.cantidad * item.precioUnitario;
     });
   }
@@ -402,8 +529,7 @@ export class ClientePortalComponent implements OnInit {
       return;
     }
 
-    const nuevaOrden: Orden = {
-      cliente: {} as any,
+    const nuevaOrden: OrdenParaCrear = {
       estado: 'PENDIENTE',
       total: this.calcularTotal(),
       detalles: this.carrito.map(item => ({
@@ -423,10 +549,14 @@ export class ClientePortalComponent implements OnInit {
         this.activeTab = 'ordenes';
       },
       error: (err) => {
-        const errorMsg = err?.error?.message || 'Error al procesar la orden. Verifique el stock disponible.';
+        const errorMsg = this.obtenerMensajeError(err, 'Error al procesar la orden. Verifique el stock disponible.');
         this.mostrarError(errorMsg);
       }
     });
+  }
+
+  private obtenerMensajeError(error: { error?: { message?: string } }, fallback: string): string {
+    return error?.error?.message || fallback;
   }
 
   private mostrarError(mensaje: string) {

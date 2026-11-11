@@ -1,0 +1,82 @@
+networks:
+  pedidos360-rabbitmq-net:
+    driver: bridge
+
+volumes:
+  rabbitmq1-data:
+  rabbitmq2-data:
+
+services:
+  rabbitmq1:
+    image: rabbitmq:3.13-management
+    container_name: docker-rabbitmq1-1
+    hostname: rabbitmq1
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_ERLANG_COOKIE: "pedidos360_secret_cookie"
+      RABBITMQ_DEFAULT_USER: "pedidos360"
+      RABBITMQ_DEFAULT_PASS: "pedidos360-local"
+      RABBITMQ_VM_MEMORY_HIGH_WATERMARK_RELATIVE: "0.8"
+    volumes:
+      - rabbitmq1-data:/var/lib/rabbitmq
+    networks:
+      - pedidos360-rabbitmq-net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq2:
+    image: rabbitmq:3.13-management
+    container_name: docker-rabbitmq2-1
+    hostname: rabbitmq2
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+    environment:
+      RABBITMQ_ERLANG_COOKIE: "pedidos360_secret_cookie"
+      RABBITMQ_VM_MEMORY_HIGH_WATERMARK_RELATIVE: "0.8"
+    volumes:
+      - rabbitmq2-data:/var/lib/rabbitmq
+    networks:
+      - pedidos360-rabbitmq-net
+    depends_on:
+      rabbitmq1:
+        condition: service_healthy
+    entrypoint:
+      - /bin/bash
+      - -ec
+      - |
+        rabbitmq-server -detached
+
+        for attempt in {1..30}; do
+          if rabbitmq-diagnostics -q ping; then
+            break
+          fi
+          if [ "$$attempt" -eq 30 ]; then
+            echo "rabbitmq2 no pudo iniciar dentro del tiempo esperado." >&2
+            exit 1
+          fi
+          sleep 2
+        done
+
+        rabbitmqctl stop_app
+        rabbitmqctl reset
+
+        for attempt in {1..30}; do
+          if rabbitmq-diagnostics -n rabbit@rabbitmq1 -q ping; then
+            break
+          fi
+          if [ "$$attempt" -eq 30 ]; then
+            echo "rabbitmq1 no responde desde rabbitmq2." >&2
+            exit 1
+          fi
+          sleep 2
+        done
+
+        rabbitmqctl join_cluster rabbit@rabbitmq1
+        rabbitmqctl start_app
+        exec tail -f /dev/null

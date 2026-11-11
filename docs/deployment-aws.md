@@ -76,7 +76,7 @@ No subir credenciales al repositorio. El perfil PostgreSQL usa `ddl-auto=validat
 
 ## 5. Frontend
 
-El frontend debe cambiar `apiEndpoint` desde `http://localhost:8080` a la URL pública de API Gateway. También se debe registrar esa URL como redirect URI SPA en Microsoft Entra ID y agregarla a CORS del backend cuando corresponda.
+El frontend debe configurar `apiGatewayUrl` con la URL pública de API Gateway. También se debe registrar el origen del frontend como redirect URI SPA en Microsoft Entra ID y agregarlo a CORS del backend cuando corresponda.
 
 ## Estado
 
