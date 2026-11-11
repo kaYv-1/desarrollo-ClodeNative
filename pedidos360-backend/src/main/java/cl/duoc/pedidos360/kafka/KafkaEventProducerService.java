@@ -19,21 +19,28 @@ public class KafkaEventProducerService {
     private final KafkaMessagingProperties properties;
 
     public CompletableFuture<?> publishOrderCreated(OrdenCreadaEvent event) {
+        return publish(event, properties.orderCreatedTopic());
+    }
+
+    public CompletableFuture<?> publishOrderNotification(OrdenCreadaEvent event) {
+        return publish(event, properties.orderNotificationTopic());
+    }
+
+    private CompletableFuture<?> publish(OrdenCreadaEvent event, String topic) {
         if (event == null || event.ordenId() == null) {
             throw new IllegalArgumentException("El evento Kafka requiere un identificador de orden.");
         }
 
         return kafkaTemplate.send(
-            properties.orderCreatedTopic(),
+            topic,
             event.ordenId().toString(),
             event
         ).whenComplete((result, error) -> {
             if (error == null) {
-                logger.info("Evento Kafka de orden publicado. ordenId={}, topic={}",
-                    event.ordenId(), properties.orderCreatedTopic());
+                logger.info("Evento Kafka publicado. ordenId={}, topic={}", event.ordenId(), topic);
             } else {
-                logger.error("No se pudo publicar el evento Kafka de orden. ordenId={}",
-                    event.ordenId(), error);
+                logger.error("No se pudo publicar el evento Kafka. ordenId={}, topic={}",
+                    event.ordenId(), topic, error);
             }
         });
     }

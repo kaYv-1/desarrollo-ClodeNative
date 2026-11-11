@@ -1,6 +1,6 @@
 # INFORME TÉCNICO DE PROYECTO: PEDIDOS360
 **Asignatura:** Desarrollo Cloud Native I (DSY1107)  
-**Evaluación:** Evaluación Parcial N.° 3  
+**Evaluación:** Evaluaciones Parciales N.° 3 (RabbitMQ) y N.° 5 (Kafka)
 **Integrantes:**
 - **Israel Poblete**
 - **Ángel Venegas**  
@@ -10,29 +10,24 @@
 
 ---
 
-## 1. Resumen Ejecutivo y Alcance de la Evaluación N.° 3
+## 1. Resumen Ejecutivo y Alcance de las Evaluaciones N.° 3 y 5
 
-El proyecto **Pedidos360** incorpora en esta tercera etapa el patrón de **Arquitectura Orientada a Eventos (EDA)** mediante **RabbitMQ** como broker de mensajería asíncrona empresarial.
+El proyecto **Pedidos360** combina **RabbitMQ** para el procesamiento asíncrono de tareas de negocio con **Apache Kafka** para publicar y consumir eventos de órdenes mediante tópicos. Kafka complementa la integración RabbitMQ existente; no la reemplaza.
 
-Al confirmar una orden, el backend publica tareas asíncronas para notificaciones, tickets y documentos. Cada dominio tiene un consumidor, una cola durable y su propia DLQ. Los consumidores usan ACK/NACK manual; el servicio RabbitMQ Admin expone una API REST protegida para administrar la topología. Los consumidores validan y registran las solicitudes en logs; no envían correo ni generan archivos externos.
+Al confirmar una orden, el backend publica tareas para notificaciones, tickets y documentos en RabbitMQ, con ACK/NACK manual y DLQ por dominio. También publica el evento tipado en los tópicos Kafka de órdenes creadas y notificaciones. Ambos consumidores Kafka validan y registran los eventos con grupos separados y reintentos ante errores. Los consumidores actuales registran las solicitudes; no envían correo ni generan archivos externos.
 
-### 📋 Matriz de Cumplimiento de la Rúbrica (Evaluación Parcial N.° 3)
+### 📋 Componentes y evidencia
 
-| Indicador de Evaluación | Ponderación | Nivel de Desempeño | Evidencia / Ubicación en el Código |
-|---|:---:|:---:|---|
-| **Mensajería local** | Exchanges, colas, bindings y DLQ por dominio | Configurados en `pedidos360-backend/src/main/java/cl/duoc/pedidos360/messaging/RabbitMessagingConfiguration.java`. | **Implementado; pruebas unitarias** |
-| **Consumidores** | Notificaciones, tickets y documentos con ACK/NACK | `OrdenNotificacionConsumer`, `OrdenTicketConsumer` y `OrdenDocumentoConsumer`. | **Implementado; procesa y registra solicitudes** |
-| **Administración RabbitMQ** | Endpoints REST para colas, exchanges y bindings | `pedidos360-rabbitmq-admin`, con autenticación JWT y rol `ADMIN`. | **Implementado; pruebas web/servicio** |
-| **Clúster RabbitMQ local** | Dos nodos configurados con descubrimiento clásico | `compose.yaml` y `infrastructure/rabbitmq/rabbitmq.conf`. | **Configurado; requiere validar con Docker activo** |
-| **Despliegue cloud** | API Gateway, frontend/backend activos, IDaaS y RabbitMQ en nube | Existe una URL de API Gateway configurada; no se pudieron verificar credenciales AWS ni los demás recursos desde este entorno. | **Pendiente de verificación en AWS** |
-| **1. Nombres centralizados en properties/@Configuration** | **12%** | **Muy Buen Desempeño (100%)** | `application.properties` (prefijo `app.messaging.*`) y `RabbitMessagingProperties.java` (record con `@ConfigurationProperties`). No existen valores ni nombres sueltos o duplicados en clases de negocio. |
-| **2. Declaración de beans de Queue, Exchange y Binding** | **13%** | **Muy Buen Desempeño (100%)** | `RabbitMessagingConfiguration.java`: Declara `DirectExchange` principal, `DirectExchange` de dead-letter (DLX), Queues con argumentos DLQ y Bindings. |
-| **3. Aislamiento de lógica de negocio y configuración** | **10%** | **Muy Buen Desempeño (100%)** | `OrdenService.java` solo usa `ApplicationEventPublisher` de Spring para emitir `OrdenCreadaEvent`. No conoce detalles de RabbitMQ ni configuración de brokers. `OrdenCreadaPublisher` escucha vía `@TransactionalEventListener` y envía a RabbitMQ. |
-| **4. Consumidores `@RabbitListener` organizados por dominio** | **15%** | **Muy Buen Desempeño (100%)** | `OrdenNotificacionConsumer` (Dominio Notificaciones): consumidor con `@RabbitListener` que procesa eventos de órdenes creadas. |
-| **5. Confirmación ACK manual, NACK y DLQ explícito** | **20%** | **Muy Buen Desempeño (100%)** | `OrdenNotificacionConsumer`: `channel.basicAck()` ante éxito y `channel.basicNack(deliveryTag, false, false)` ante fallo, desviando a DLQ con logging exhaustivo. |
-| **6. Endpoints REST de administración (`/queues`, `/exchanges`)** | **13%** | **Muy Buen Desempeño (100%)** | `RabbitAdminController.java` (microservicio `pedidos360-rabbitmq-admin`, puerto 8081): expone `POST/DELETE /queues`, `POST/DELETE /exchanges` y `POST/DELETE /bindings`. |
-| **7. Lógica encapsulada en `RabbitAdminService`** | **10%** | **Muy Buen Desempeño (100%)** | `RabbitAdminService.java` encapsula `AmqpAdmin`. El controlador delega 100% en métodos de alto nivel. |
-| **8. Validación de parámetros de entrada (DTOs)** | **7%** | **Muy Buen Desempeño (100%)** | DTOs Records (`QueueDefinitionRequest`, `ExchangeDefinitionRequest`, `BindingDefinitionRequest`) con `@NotBlank` y `@Pattern`, validados con `@Valid` y procesados centralizadamente por `GlobalExceptionHandler`. |
+| Componente | Implementación | Evidencia |
+|---|---|---|
+| RabbitMQ | Productor y tres consumidores por dominio; ACK/NACK, DLQ y logging | `pedidos360-backend/src/main/java/cl/duoc/pedidos360/messaging/` |
+| Administración RabbitMQ | API protegida para crear y eliminar colas, exchanges y bindings | `pedidos360-rabbitmq-admin` |
+| Clúster RabbitMQ | Compose de dos nodos | `docker/docker-compose-rabbitmq.yml` |
+| Kafka | Productor y consumidores JSON tipados para ambos tópicos, con grupos separados y reintentos | `pedidos360-backend/src/main/java/cl/duoc/pedidos360/kafka/` |
+| Administración Kafka | Microservicio protegido para consultar, crear, modificar y eliminar tópicos/configuración y gestionar consumer groups | `pedidos360-kafka-admin` |
+| Kafka y Kafka UI | Compose de Zookeeper, tres brokers y Kafka UI | `docker/docker-compose-kafka.yml` |
+| Frontend y autenticación | Angular con MSAL; API protegida con JWT y roles | `pedidos360-frontend/` y configuración de seguridad de Spring |
+| Despliegue cloud | Configuración de API Gateway disponible; recursos cloud no verificados desde este entorno | `docs/deployment-aws.md` |
 
 ---
 
@@ -109,35 +104,41 @@ Los administradores del sistema (`ROLE_ADMIN`) cuentan con un **microservicio de
 
 ## 5. Pruebas Automatizadas y Verificación
 
-Pruebas automatizadas disponibles en los módulos backend y administrador:
+Pruebas automatizadas disponibles en los módulos Java y frontend:
 
-### `pedidos360-backend` (13 pruebas)
+### `pedidos360-backend` (29 pruebas)
 ```powershell
-cd pedidos360-backend
-.\mvnw.cmd clean test
-cd ..\pedidos360-rabbitmq-admin
-mvn clean test
-cd ..\pedidos360-frontend
-npm test -- --watch=false
+.\pedidos360-backend\mvnw.cmd -f pedidos360-backend\pom.xml clean test
 ```
 ### Cobertura de Pruebas:
 * `RabbitMessagingConfigurationTest`: Verifica ambos tipos de exchange y las tres colas con sus argumentos DLQ.
 * Pruebas de consumidores y productor: verifican ACK, NACK y publicación de tareas por routing key.
 * Pruebas del administrador: verifican autenticación, autorización, validación y protección de la topología interna.
-* `SecurityMockMvcTest` y `OrdenServiceTest`: cubren autorización JWT y lógica de órdenes.
-=======
 * `OrdenNotificacionConsumerTest`: Verifica `basicAck()` ante éxito y `basicNack()` hacia la DLQ ante fallas.
 * `OrdenServiceTest`: Valida lógica transaccional de pedidos, deducción de stock y publicación de `OrdenCreadaEvent`.
 * `SecurityMockMvcTest`: Valida filtros JWT de Azure AD, claims y rechazos sin token.
 * `AzureJwtAuthenticationConverterTest`: Verifica extracción y conversión de claims de roles de Azure.
+* Las pruebas `KafkaEventProducerServiceTest`, `KafkaOrderEventPublisherTest`, `KafkaOrderEventConsumerTest` y `KafkaOrderNotificationConsumerTest` cubren publicación y consumo Kafka.
 
 ### `pedidos360-rabbitmq-admin` (7 pruebas)
 ```powershell
-cd pedidos360-rabbitmq-admin
-mvn clean test
+.\pedidos360-backend\mvnw.cmd -f pedidos360-rabbitmq-admin\pom.xml test
 ```
 * `RabbitAdminControllerTest`: Valida respuestas HTTP 200/204, rechazos 400 por validación DTO y control de acceso RBAC (`401`/`403`).
 * `RabbitAdminServiceTest`: Verifica la creación y eliminación de colas, exchanges y bindings vía `AmqpAdmin`.
+
+### `pedidos360-kafka-admin` (10 pruebas)
+```powershell
+.\pedidos360-backend\mvnw.cmd -f pedidos360-kafka-admin\pom.xml test
+```
+* `KafkaAdminControllerTest` y `KafkaAdminServiceTest`: cubren CRUD de tópicos/configuración y consulta/borrado de consumer groups.
+* `KafkaAdminSecurityTest`: verifica JWT, rol `ADMIN` y validación de solicitudes.
+
+### Frontend
+```powershell
+cd pedidos360-frontend
+npm test -- --watch=false
+```
 
 ---
 
@@ -237,16 +238,17 @@ Desktop con Compose v2.
 ### Kafka: 3 Zookeeper, 3 brokers y Kafka UI
 
 ```powershell
-docker compose -f docker/docker-compose-kafka.yml up -d
+docker compose -f docker/docker-compose-kafka.yml up -d --build
 docker compose -f docker/docker-compose-kafka.yml ps
 ```
 
 Kafka queda disponible desde el host en `localhost:9092`, `localhost:9093` y
 `localhost:9094`. Kafka UI se puede abrir en
-<http://localhost:8085>. Para revisar los logs:
+<http://localhost:8085>. El microservicio administrador Kafka queda en
+<http://localhost:8082> y usa los brokers de la red interna. Para revisar los logs:
 
 ```powershell
-docker compose -f docker/docker-compose-kafka.yml logs --tail=100 kafka1 kafka2 kafka3 kafka-ui
+docker compose -f docker/docker-compose-kafka.yml logs --tail=100 kafka1 kafka2 kafka3 kafka-ui kafka-admin
 ```
 
 ### RabbitMQ: clúster de 2 nodos
@@ -289,16 +291,19 @@ cd pedidos360-backend
 .\mvnw.cmd spring-boot:run
 ```
 
-La configuración usa por defecto
-`localhost:9092,localhost:9093,localhost:9094`, el grupo
-`pedidos360-orders` y declara estos tópicos con 3 particiones, 3 réplicas,
-retención de 7 días y `cleanup.policy=delete`:
+Después del commit de la orden, el productor publica el mismo evento JSON
+tipado en ambos tópicos. Cada tópico tiene un consumidor con un grupo distinto:
+`pedidos360-orders` y `pedidos360-notifications`. La configuración usa por
+defecto `localhost:9092,localhost:9093,localhost:9094` y declara los dos
+tópicos con 3 particiones, 3 réplicas, retención de 7 días y
+`cleanup.policy=delete`:
 
 - `pedidos360.orders.created`
 - `pedidos360.orders.notifications`
 
-El administrador Kafka está expuesto en el backend bajo
-`/api/admin/kafka/topics` y requiere el rol `ADMIN`:
+El microservicio `pedidos360-kafka-admin`, incluido en el Compose de Kafka y
+expuesto en `http://localhost:8082`, ofrece `/api/admin/kafka/topics` y
+requiere el rol `ADMIN`:
 
 | Método | Endpoint | Operación |
 |---|---|---|
@@ -307,16 +312,23 @@ El administrador Kafka está expuesto en el backend bajo
 | `GET` | `/api/admin/kafka/topics/{name}` | Consultar un tópico |
 | `PUT` | `/api/admin/kafka/topics/{name}/config` | Modificar retención y política de limpieza |
 | `DELETE` | `/api/admin/kafka/topics/{name}` | Eliminar tópico |
+| `GET` | `/api/admin/kafka/topics/groups` | Listar consumer groups con estado y tópicos asignados |
+| `GET` | `/api/admin/kafka/topics/groups/{groupId}` | Consultar un consumer group |
+| `DELETE` | `/api/admin/kafka/topics/groups/{groupId}` | Eliminar un consumer group inactivo |
 
-Los errores del consumidor se procesan con `DefaultErrorHandler` y tres
-reintentos con backoff de un segundo. El offset no se confirma mientras el
-procesamiento falle.
+Los errores del consumidor se procesan con `DefaultErrorHandler`, tres
+reintentos y backoff de un segundo. El auto-commit está deshabilitado y el
+offset se confirma por registro; los fallos de procesamiento quedan en los
+logs del consumidor/error handler. La creación automática de tópicos queda
+deshabilitada por defecto y se habilita localmente con
+`KAFKA_ADMIN_AUTO_CREATE=true`.
 
-La solución **Pedidos360** para la **Evaluación Parcial N.° 3** cumple con la totalidad de los criterios evaluados:
-- **Desacoplamiento asíncrono:** `OrdenService` emite un evento de dominio (`OrdenCreadaEvent`) vía `ApplicationEventPublisher` de Spring. `OrdenCreadaPublisher` escucha con `@TransactionalEventListener` y publica a RabbitMQ solo tras el commit transaccional.
-- **Resiliencia garantizada:** Confirmaciones manuales explícitas (`basicAck`) y gestión de fallos con Dead-Letter Queue (`basicNack` sin requeue) sin pérdida de mensajes.
-- **Arquitectura de múltiples microservicios:** Separación entre el servicio de negocio principal (`pedidos360-backend`) y el servicio de gestión de infraestructura de mensajería (`pedidos360-rabbitmq-admin`), ambos securizados con OAuth2 / Microsoft Entra ID.
-- **Frontend SPA reactivo:** Angular con MSAL, guards por rol y navegación adaptativa.
+La arquitectura mantiene el flujo RabbitMQ de la Evaluación Parcial N.° 3 y suma
+streaming Kafka para la Evaluación Parcial N.° 5. `OrdenService` emite el evento
+de dominio solo después de confirmar la transacción; los publicadores RabbitMQ
+y Kafka mantienen sus responsabilidades separadas. Los servicios
+administradores validan JWT y rol `ADMIN`. La ejecución de los clústeres y el
+despliegue cloud deben verificarse en el entorno de presentación.
 
 ## 12. Actualización visual y navegación del frontend
 

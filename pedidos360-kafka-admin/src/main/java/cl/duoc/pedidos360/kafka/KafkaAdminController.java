@@ -5,11 +5,12 @@ import java.util.List;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
-import lombok.RequiredArgsConstructor;
+import jakarta.validation.constraints.Size;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -62,6 +63,26 @@ public class KafkaAdminController {
         @PathVariable @NotBlank @Pattern(regexp = TOPIC_NAME_PATTERN) String name
     ) {
         kafkaAdminService.deleteTopic(name);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/groups")
+    public List<KafkaConsumerGroupResponse> listConsumerGroups() {
+        return kafkaAdminService.listConsumerGroups();
+    }
+
+    @GetMapping("/groups/{groupId}")
+    public KafkaConsumerGroupResponse getConsumerGroup(
+        @PathVariable @NotBlank @Size(max = 255) String groupId
+    ) {
+        return kafkaAdminService.getConsumerGroup(groupId);
+    }
+
+    @DeleteMapping("/groups/{groupId}")
+    public ResponseEntity<Void> deleteConsumerGroup(
+        @PathVariable @NotBlank @Size(max = 255) String groupId
+    ) {
+        kafkaAdminService.deleteConsumerGroup(groupId);
         return ResponseEntity.noContent().build();
     }
 }

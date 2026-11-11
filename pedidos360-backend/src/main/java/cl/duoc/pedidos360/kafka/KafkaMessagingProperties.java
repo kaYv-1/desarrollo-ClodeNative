@@ -10,6 +10,7 @@ import org.springframework.validation.annotation.Validated;
 public record KafkaMessagingProperties(
     @NotBlank String orderCreatedTopic,
     @NotBlank String orderNotificationTopic,
+    @NotBlank String notificationConsumerGroup,
     @Min(1) int partitions,
     @Min(1) short replicationFactor,
     @Min(1) long retentionMs,

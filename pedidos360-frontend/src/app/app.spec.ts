@@ -6,12 +6,14 @@ import { App } from './app';
 
 class MsalServiceMock {
   instance = {
+    handleRedirectPromise: () => Promise.resolve(null),
     getActiveAccount: () => null,
     getAllAccounts: () => [],
     setActiveAccount: () => undefined,
   };
 
   initialize = () => of(undefined);
+  loginRedirect = () => of(undefined);
   handleRedirectObservable = () => of(null);
   acquireTokenSilent = () => of({ accessToken: 'token-demo' });
   acquireTokenPopup = () => of({ accessToken: 'token-demo' });
@@ -49,7 +51,7 @@ describe('App', () => {
     await fixture.whenStable();
 
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h2')?.textContent).toContain('Pedidos360');
-    expect(compiled.querySelector('button')?.textContent).toContain('Iniciar Sesión');
+    expect(compiled.querySelector('h3')?.textContent).toContain('Bienvenido a Pedidos360');
+    expect(compiled.querySelector('.login-actions button')?.textContent).toContain('Iniciar Sesión Azure AD');
   });
 });

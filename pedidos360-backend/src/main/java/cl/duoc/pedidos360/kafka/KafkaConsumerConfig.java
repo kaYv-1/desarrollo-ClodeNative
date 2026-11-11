@@ -3,6 +3,7 @@ package cl.duoc.pedidos360.kafka;
 import java.util.HashMap;
 import java.util.Map;
 
+import cl.duoc.pedidos360.messaging.OrdenCreadaEvent;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
@@ -25,6 +26,7 @@ public class KafkaConsumerConfig {
         Map<String, Object> config = new HashMap<>(properties.buildConsumerProperties());
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
+        config.put(JsonDeserializer.VALUE_DEFAULT_TYPE, OrdenCreadaEvent.class.getName());
         config.put(JsonDeserializer.TRUSTED_PACKAGES, "cl.duoc.pedidos360");
         config.put(JsonDeserializer.USE_TYPE_INFO_HEADERS, false);
         return new DefaultKafkaConsumerFactory<>(config);
