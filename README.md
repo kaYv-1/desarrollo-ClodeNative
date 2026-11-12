@@ -106,7 +106,7 @@ Los administradores del sistema (`ROLE_ADMIN`) cuentan con un **microservicio de
 
 Pruebas automatizadas disponibles en los módulos Java y frontend:
 
-### `pedidos360-backend` (29 pruebas)
+### `pedidos360-backend` (32 pruebas)
 ```powershell
 .\pedidos360-backend\mvnw.cmd -f pedidos360-backend\pom.xml clean test
 ```
@@ -119,6 +119,7 @@ Pruebas automatizadas disponibles en los módulos Java y frontend:
 * `SecurityMockMvcTest`: Valida filtros JWT de Azure AD, claims y rechazos sin token.
 * `AzureJwtAuthenticationConverterTest`: Verifica extracción y conversión de claims de roles de Azure.
 * Las pruebas `KafkaEventProducerServiceTest`, `KafkaOrderEventPublisherTest`, `KafkaOrderEventConsumerTest` y `KafkaOrderNotificationConsumerTest` cubren publicación y consumo Kafka.
+* Las tres pruebas `runtime` ejercitan por HTTP clientes, productos y órdenes, incluyendo autenticación, persistencia, descuento de stock y publicación del evento de orden.
 
 ### `pedidos360-rabbitmq-admin` (7 pruebas)
 ```powershell
@@ -139,6 +140,14 @@ Pruebas automatizadas disponibles en los módulos Java y frontend:
 cd pedidos360-frontend
 npm test -- --watch=false
 ```
+Para las pruebas de navegador (Playwright), instala Chromium una vez con
+`npx playwright install chromium` y ejecuta:
+```powershell
+npm run test:e2e
+```
+La suite comprueba la pantalla de inicio, el acceso denegado y las rutas
+desconocidas. Los resultados de la preparación para evaluación están en
+[`runtime-validation-report.md`](runtime-validation-report.md).
 
 ---
 

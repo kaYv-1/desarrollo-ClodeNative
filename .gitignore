@@ -17,6 +17,8 @@ desktop.ini
 **/dist/
 **/coverage/
 **/.cache/
+**/test-results/
+**/playwright-report/
 
 # Local environment and secrets
 **/.env
