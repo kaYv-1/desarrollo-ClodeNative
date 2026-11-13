@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -15,6 +17,19 @@ import java.util.List;
 public class ClienteController {
 
     private final ClienteService clienteService;
+
+    @GetMapping("/perfil")
+    public ResponseEntity<Cliente> obtenerMiPerfil(Authentication authentication) {
+        String email = extraerEmail(authentication);
+        String nombre = extraerNombre(authentication);
+        return ResponseEntity.ok(clienteService.obtenerOCrearClientePorEmail(email, nombre));
+    }
+
+    @PutMapping("/perfil")
+    public ResponseEntity<Cliente> actualizarMiPerfil(@RequestBody Cliente cliente, Authentication authentication) {
+        String email = extraerEmail(authentication);
+        return ResponseEntity.ok(clienteService.actualizarClientePorEmail(email, cliente));
+    }
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
@@ -49,5 +64,25 @@ public class ClienteController {
     public ResponseEntity<Void> eliminarCliente(@PathVariable Long id) {
         clienteService.eliminarCliente(id);
         return ResponseEntity.noContent().build();
+    }
+
+    private String extraerEmail(Authentication authentication) {
+        if (authentication != null && authentication.getPrincipal() instanceof Jwt jwt) {
+            String preferredUsername = jwt.getClaimAsString("preferred_username");
+            if (preferredUsername != null && !preferredUsername.isBlank()) {
+                return preferredUsername;
+            }
+        }
+        return authentication != null ? authentication.getName() : "usuario@pedidos360.local";
+    }
+
+    private String extraerNombre(Authentication authentication) {
+        if (authentication != null && authentication.getPrincipal() instanceof Jwt jwt) {
+            String name = jwt.getClaimAsString("name");
+            if (name != null && !name.isBlank()) {
+                return name;
+            }
+        }
+        return extraerEmail(authentication);
     }
 }

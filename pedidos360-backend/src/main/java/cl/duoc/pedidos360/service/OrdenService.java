@@ -111,9 +111,60 @@ public class OrdenService {
         Orden orden = ordenRepository.findById(ordenId)
             .orElseThrow(() -> new IllegalArgumentException("Orden no encontrada"));
         
+        EstadoOrden estadoAnterior = orden.getEstado();
+        if (estadoAnterior == nuevoEstado) {
+            return orden;
+        }
+
+        // Si se cancela la orden, se restaura el stock de los productos
+        if (nuevoEstado == EstadoOrden.CANCELADO && estadoAnterior != EstadoOrden.CANCELADO) {
+            restaurarStock(orden);
+        } else if (estadoAnterior == EstadoOrden.CANCELADO && nuevoEstado != EstadoOrden.CANCELADO) {
+            // Si una orden cancelada se reactiva, se vuelve a descontar stock si es posible
+            descontarStock(orden);
+        }
+
         orden.setEstado(nuevoEstado);
         orden.setFechaActualizacion(LocalDateTime.now());
         return ordenRepository.save(orden);
+    }
+
+    @Transactional
+    public Orden cancelarOrdenPorCliente(Long ordenId, String email) {
+        Orden orden = ordenRepository.findByIdAndClienteEmail(ordenId, email)
+            .orElseThrow(() -> new IllegalArgumentException("Orden no encontrada o no pertenece al usuario autenticado"));
+        
+        if (orden.getEstado() != EstadoOrden.PENDIENTE) {
+            throw new IllegalArgumentException("Solo se pueden cancelar órdenes en estado PENDIENTE. Estado actual: " + orden.getEstado());
+        }
+        return cambiarEstadoOrden(ordenId, EstadoOrden.CANCELADO);
+    }
+
+    private void restaurarStock(Orden orden) {
+        if (orden.getDetalles() == null) return;
+        for (DetallePedido detalle : orden.getDetalles()) {
+            if (detalle.getProducto() != null && detalle.getProducto().getId() != null) {
+                productoRepository.findById(detalle.getProducto().getId()).ifPresent(prod -> {
+                    prod.setStock(prod.getStock() + detalle.getCantidad());
+                    productoRepository.save(prod);
+                });
+            }
+        }
+    }
+
+    private void descontarStock(Orden orden) {
+        if (orden.getDetalles() == null) return;
+        for (DetallePedido detalle : orden.getDetalles()) {
+            if (detalle.getProducto() != null && detalle.getProducto().getId() != null) {
+                productoRepository.findById(detalle.getProducto().getId()).ifPresent(prod -> {
+                    if (prod.getStock() < detalle.getCantidad()) {
+                        throw new IllegalArgumentException("Stock insuficiente para reactivar la orden con producto: " + prod.getNombre());
+                    }
+                    prod.setStock(prod.getStock() - detalle.getCantidad());
+                    productoRepository.save(prod);
+                });
+            }
+        }
     }
 
     @Transactional

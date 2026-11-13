@@ -69,6 +69,14 @@ export class ApiService {
   }
 
   // Cliente endpoints
+  obtenerMiPerfil(): Observable<Cliente> {
+    return this.http.get<Cliente>(`${this.apiUrl}/api/clientes/perfil`);
+  }
+
+  actualizarMiPerfil(cliente: Cliente): Observable<Cliente> {
+    return this.http.put<Cliente>(`${this.apiUrl}/api/clientes/perfil`, cliente);
+  }
+
   crearCliente(cliente: Cliente): Observable<Cliente> {
     return this.http.post<Cliente>(`${this.apiUrl}/api/clientes`, cliente);
   }
@@ -141,6 +149,10 @@ export class ApiService {
 
   cambiarEstadoOrden(ordenId: number, nuevoEstado: string): Observable<Orden> {
     return this.http.put<Orden>(`${this.apiUrl}/api/ordenes/${ordenId}/estado?nuevoEstado=${nuevoEstado}`, {});
+  }
+
+  cancelarOrden(ordenId: number): Observable<Orden> {
+    return this.http.put<Orden>(`${this.apiUrl}/api/ordenes/${ordenId}/cancelar`, {});
   }
 
   eliminarOrden(id: number): Observable<void> {

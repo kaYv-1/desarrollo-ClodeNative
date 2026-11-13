@@ -98,7 +98,17 @@ public class OrdenController {
         try {
             return ResponseEntity.ok(ordenService.cambiarEstadoOrden(id, nuevoEstado));
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @PutMapping("/{id}/cancelar")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CLIENTE')")
+    public ResponseEntity<Orden> cancelarOrden(@PathVariable Long id, Authentication authentication) {
+        if (esAdmin(authentication)) {
+            return ResponseEntity.ok(ordenService.cambiarEstadoOrden(id, EstadoOrden.CANCELADO));
+        } else {
+            return ResponseEntity.ok(ordenService.cancelarOrdenPorCliente(id, email(authentication)));
         }
     }
 

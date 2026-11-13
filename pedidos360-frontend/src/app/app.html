@@ -12,8 +12,8 @@
 
   <!-- Nav: solo muestra los links que corresponden al rol -->
   <nav *ngIf="isLoggedIn && userRole" class="nav-menu">
-    <span *ngIf="isCliente" class="nav-title">Mi portal</span>
-    <a *ngIf="isAdmin" routerLink="/admin" routerLinkActive="active" class="nav-btn">Panel admin</a>
+    <a *ngIf="isCliente" routerLink="/portal" routerLinkActive="active" class="nav-btn">🛒 Mi Portal</a>
+    <a *ngIf="isAdmin" routerLink="/admin" routerLinkActive="active" class="nav-btn">⚙️ Panel Admin</a>
   </nav>
 
   <div class="user-session">
