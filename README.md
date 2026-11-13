@@ -68,8 +68,8 @@ Al confirmar una orden, el backend publica tareas para notificaciones, tickets y
 ## 3. Topología de RabbitMQ
 
 ### 3.1 Exchanges
-* **`pedidos360.orders` (Direct Exchange, durable):** Intercambiador principal de eventos de dominio de órdenes. Enruta mensajes al consumidor de notificaciones mediante routing key `orders.created`.
-* **`pedidos360.dead-letter` (Direct Exchange, durable):** Intercambiador de letra muerta (DLX). Recibe mensajes rechazados mediante routing key `orders.created.failed`.
+* **`pedidos360.orders` (Topic Exchange, durable):** Intercambiador principal de eventos de dominio de órdenes. Enruta las tareas mediante las routing keys `order.created.notifications`, `order.created.tickets` y `order.created.documents`.
+* **`pedidos360.dead-letter` (Direct Exchange, durable):** Intercambiador de letra muerta (DLX). Enruta cada mensaje rechazado hacia su DLQ mediante `order.notifications.dlq`, `order.tickets.dlq` u `order.documents.dlq`.
 
 ### 3.2 Colas Principales y DLQs
 | Dominio | Cola durable | Routing key | DLQ |
@@ -106,7 +106,7 @@ Los administradores del sistema (`ROLE_ADMIN`) cuentan con un **microservicio de
 
 Pruebas automatizadas disponibles en los módulos Java y frontend:
 
-### `pedidos360-backend` (32 pruebas)
+### `pedidos360-backend`
 ```powershell
 .\pedidos360-backend\mvnw.cmd -f pedidos360-backend\pom.xml clean test
 ```
@@ -121,14 +121,14 @@ Pruebas automatizadas disponibles en los módulos Java y frontend:
 * Las pruebas `KafkaEventProducerServiceTest`, `KafkaOrderEventPublisherTest`, `KafkaOrderEventConsumerTest` y `KafkaOrderNotificationConsumerTest` cubren publicación y consumo Kafka.
 * Las tres pruebas `runtime` ejercitan por HTTP clientes, productos y órdenes, incluyendo autenticación, persistencia, descuento de stock y publicación del evento de orden.
 
-### `pedidos360-rabbitmq-admin` (7 pruebas)
+### `pedidos360-rabbitmq-admin`
 ```powershell
 .\pedidos360-backend\mvnw.cmd -f pedidos360-rabbitmq-admin\pom.xml test
 ```
 * `RabbitAdminControllerTest`: Valida respuestas HTTP 200/204, rechazos 400 por validación DTO y control de acceso RBAC (`401`/`403`).
 * `RabbitAdminServiceTest`: Verifica la creación y eliminación de colas, exchanges y bindings vía `AmqpAdmin`.
 
-### `pedidos360-kafka-admin` (10 pruebas)
+### `pedidos360-kafka-admin`
 ```powershell
 .\pedidos360-backend\mvnw.cmd -f pedidos360-kafka-admin\pom.xml test
 ```
@@ -194,7 +194,15 @@ cd pedidos360-backend
 ```
 
 ### 6.3 Iniciar Frontend (Angular 22)
-Antes de desarrollo local, establece `apiEndpoint` en `pedidos360-frontend/public/runtime-config.json` a `http://localhost:8080`. El archivo versionado contiene la URL API Gateway configurada para el despliegue; restaura esa URL antes de compilar o publicar la versión cloud.
+Antes del desarrollo local, establece `apiGatewayUrl` en `pedidos360-frontend/public/runtime-config.json` a `http://localhost:8080`:
+
+```json
+{
+  "apiGatewayUrl": "http://localhost:8080"
+}
+```
+
+En producción, reemplaza ese valor por la URL real del API Gateway antes de compilar o publicar el frontend.
 ```powershell
 cd pedidos360-frontend
 npm start
